@@ -8,9 +8,9 @@
 #include "Shader.hpp"
 #include "TextRenderer.hpp"
 #include "FontAtlas.hpp"
-#include "Defer.hpp"
+#include <fort/utils/Defer.hpp>
 
-#include "fort-charis_rc.h"
+#include "fort-gl_rc.h"
 
 namespace fort {
 namespace gl {

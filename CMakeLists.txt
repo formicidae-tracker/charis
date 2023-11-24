@@ -54,4 +54,4 @@ find_package(Eigen3 REQUIRED)
 find_package(Fontconfig REQUIRED)
 find_package(Freetype REQUIRED)
 
-add_subdirectory(src/gl)
+add_subdirectory(src/fort)
