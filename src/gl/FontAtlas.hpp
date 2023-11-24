@@ -1,6 +1,5 @@
 #pragma once
 
-#include "apollo/gl/RectanglePacker.hpp"
 #include <GL/glew.h>
 // order matter
 #include <GL/gl.h>
@@ -15,6 +14,8 @@
 #include <vector>
 
 #include <slog++/slog++.hpp>
+#include "RectanglePacker.hpp"
+
 
 namespace fort {
 namespace gl {

@@ -1,22 +1,20 @@
 #include "FontAtlas.hpp"
 
 #include <cstring>
-#include <fontconfig/fontconfig.h>
-
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <type_traits>
+#include <iostream>
 
+#include <fontconfig/fontconfig.h>
 #include <freetype/freetype.h>
 #include <freetype/fterrors.h>
 
-#include <type_traits>
-
 #include <slog++/slog++.hpp>
 
-#include <apollo/utils/Defer.hpp>
+#include "Defer.hpp"
 
-#include <iostream>
 
 namespace fort {
 namespace gl {

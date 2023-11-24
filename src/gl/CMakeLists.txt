@@ -1,5 +1,7 @@
 include(add_resources)
 
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 set(SRC_FILES #
     Window.cpp #
     Shader.cpp #
@@ -45,14 +47,17 @@ target_link_libraries(
 if(NOT CHARIS_IMPORTED)
   set(TEST_SRC_FILES #
       RectanglePackerTest.cpp #
+      DeferTest.cpp #
   )
 
   set(TEST_HDR_FILES #
       RectanglePackerTest.hpp #
+      DeferTest.hpp #
   )
 
   add_executable(charis-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})
-  target_link_libraries(charis-tests charis GTest::gtest_main GTest::gmock_main)
+  target_link_libraries(charis-tests fort-charis GTest::gtest_main
+                        GTest::gmock_main Eigen3::Eigen)
   gtest_discover_tests(charis-tests)
   add_dependencies(check charis-tests)
 else(NOT CHARIS_IMPORTED)

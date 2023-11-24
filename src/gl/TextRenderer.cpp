@@ -1,6 +1,3 @@
-#include "TextRenderer.hpp"
-#include "apollo/gl/FontAtlas.hpp"
-#include "apollo/utils/Defer.hpp"
 #include "concurrentqueue.h"
 #include <iterator>
 #include <limits>
@@ -8,9 +5,12 @@
 #include <memory>
 #include <type_traits>
 
-#include <apollo/apollo_rc.h>
-
 #include "Shader.hpp"
+#include "TextRenderer.hpp"
+#include "FontAtlas.hpp"
+#include "Defer.hpp"
+
+#include "fort-charis_rc.h"
 
 namespace fort {
 namespace gl {
@@ -85,12 +85,12 @@ TextRenderer::TextRenderer(
 	d_atlas.LoadASCII();
 	d_program = CompileProgram(
 	    std::string{
-	        gl_shaders_text_vertex_start,
-	        gl_shaders_text_vertex_end,
+	        shaders_text_vertex_start,
+	        shaders_text_vertex_end,
 	    },
 	    std::string{
-	        gl_shaders_text_fragment_start,
-	        gl_shaders_text_fragment_end,
+	        shaders_text_fragment_start,
+	        shaders_text_fragment_end,
 	    }
 	);
 

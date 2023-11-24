@@ -1,8 +1,9 @@
-#include "RectanglePackerTest.hpp"
-#include "apollo/gl/RectanglePacker.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "RectanglePackerTest.hpp"
+#include "RectanglePacker.hpp"
 
 namespace fort {
 namespace gl {

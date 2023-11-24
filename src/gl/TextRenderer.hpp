@@ -1,7 +1,8 @@
 #pragma once
 
-#include "apollo/gl/FontAtlas.hpp"
-#include "apollo/gl/VAOPool.hpp"
+#include "FontAtlas.hpp"
+#include "VAOPool.hpp"
+
 #include <GL/glew.h>
 // order does not matter
 #include <GL/gl.h>

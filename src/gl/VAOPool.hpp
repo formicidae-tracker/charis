@@ -9,7 +9,7 @@
 
 #include <concurrentqueue.h>
 
-#include "apollo/utils/Defer.hpp"
+#include "Defer.hpp"
 
 namespace fort {
 namespace gl {
