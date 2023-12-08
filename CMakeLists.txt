@@ -15,16 +15,10 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include(FetchContent)
-FetchContent_Declare(
-  slogpp
-  GIT_REPOSITORY https://github.com/atuleu/slogpp.git
-  GIT_TAG 525bd84d12e4b16916344da83fa73646d7deb957)
+option(FORT_CHARIS_BUILD_GL "Builds libfort-gl library" On)
+option(FORT_CHARIS_BUILD_UTILS "Builds libfort-utils library" On)
 
-FetchContent_Declare(
-  concurrentqueue
-  GIT_REPOSITORY https://github.com/cameron314/concurrentqueue.git
-  GIT_TAG v1.0.4)
+include(FetchContent)
 
 if(NOT CHARIS_IMPORTED)
   FetchContent_Declare(
@@ -37,21 +31,13 @@ if(NOT CHARIS_IMPORTED)
       ON
       CACHE BOOL "" FORCE)
 
-  FetchContent_MakeAvailable(googletest concurrentqueue slogpp)
+  FetchContent_MakeAvailable(googletest)
   enable_testing()
 
   include(GoogleTest)
 
   add_custom_target(check ALL ${CMAKE_CTEST_COMMAND} ARGS --output-on-failure)
-else()
-  FetchContent_MakeAvailable(concurrentqueue slogpp)
-endif()
 
-find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(OpenGL REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(Fontconfig REQUIRED)
-find_package(Freetype REQUIRED)
+endif(NOT CHARIS_IMPORTED)
 
 add_subdirectory(src/fort)
