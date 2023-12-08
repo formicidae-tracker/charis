@@ -10,8 +10,8 @@ if(NOT CHARIS_IMPORTED)
   gtest_discover_tests(charis-utils-tests)
   add_dependencies(check charis-utils-tests)
 else(NOT CHARIS_IMPORTED)
-  add_library(fort-charis::utils INTERFACE IMPORTED GLOBAL)
-  target_include_directories(fort-charis::utils
+  add_library(fort-charis::libfort-utils INTERFACE IMPORTED GLOBAL)
+  target_include_directories(fort-charis::libfort-utils
                              INTERFACE ${PROJECT_SOURCE_DIR}/src)
 
 endif(NOT CHARIS_IMPORTED)

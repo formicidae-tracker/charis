@@ -61,9 +61,10 @@ if(NOT CHARIS_IMPORTED)
   add_dependencies(check charis-gl-tests)
 else(NOT CHARIS_IMPORTED)
   add_library(fort-charis::gl INTERFACE IMPORTED GLOBAL)
-  target_link_libraries(fort-charis::gl INTERFACE fort-gl GLEW::glew glfw
-                                                  OpenGL::GL Eigen3::Eigen)
-  target_include_directories(fort-charis::gl
+  target_link_libraries(
+    fort-charis::libfort-gl INTERFACE fort-gl GLEW::glew glfw OpenGL::GL
+                                      Eigen3::Eigen)
+  target_include_directories(fort-charis::libfort-gl
                              INTERFACE ${PROJECT_SOURCE_DIR}/src)
 
 endif(NOT CHARIS_IMPORTED)
