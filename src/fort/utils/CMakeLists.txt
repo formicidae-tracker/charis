@@ -1,8 +1,7 @@
-set(SRC_FILES Defer.cpp)
-set(HDR_FILES Defer.hpp)
+set(SRC_FILES Defer.cpp Once.cpp)
+set(HDR_FILES Defer.hpp Once.hpp)
 
-set(TEST_SRC_FILES DeferTest.cpp)
-set(TEST_HDR_FILES DeferTest.hpp)
+set(TEST_SRC_FILES DeferTest.cpp OnceTest.cpp)
 
 if(NOT CHARIS_IMPORTED)
   add_executable(charis-utils-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})
