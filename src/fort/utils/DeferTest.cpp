@@ -1,8 +1,10 @@
-#include "DeferTest.hpp"
 #include "Defer.hpp"
+
+#include <gtest/gtest.h>
 
 namespace fort {
 namespace apollo {
+class DeferTest : public ::testing::Test {};
 
 TEST_F(DeferTest, ItActuallyDefers) {
 
