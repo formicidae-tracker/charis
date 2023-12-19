@@ -8,10 +8,10 @@ if(NOT CHARIS_IMPORTED)
 	target_link_libraries(charis-utils-tests GTest::gtest_main concurrentqueue)
 	gtest_discover_tests(charis-utils-tests)
 	add_dependencies(check charis-utils-tests)
-else(NOT CHARIS_IMPORTED)
-	add_library(fort-charis::libfort-utils INTERFACE IMPORTED GLOBAL)
-	target_include_directories(
-		fort-charis::libfort-utils INTERFACE ${PROJECT_SOURCE_DIR}/src
-	)
-	target_link_libraries(fort-charis::libfort-utils INTERFACE concurrentqueue)
 endif(NOT CHARIS_IMPORTED)
+
+add_library(fort-charis::libfort-utils INTERFACE IMPORTED GLOBAL)
+target_include_directories(
+	fort-charis::libfort-utils INTERFACE ${PROJECT_SOURCE_DIR}/src
+)
+target_link_libraries(fort-charis::libfort-utils INTERFACE concurrentqueue)

@@ -3,6 +3,7 @@
 #include "Frame.hpp"
 #include "Types.hpp"
 #include <filesystem>
+#include <functional>
 #include <tuple>
 
 namespace fort {
@@ -23,13 +24,11 @@ public:
 
 	size_t Length() const noexcept;
 
-	size_t Position() const noexcept;
-
 	void SeekFrame(size_t position);
 
 	void SeekTime(video::Duration duration);
 
-	std::unique_ptr<Frame> Grab();
+	std::unique_ptr<Frame, std::function<void(Frame *)>> Grab();
 
 private:
 	struct Implementation;

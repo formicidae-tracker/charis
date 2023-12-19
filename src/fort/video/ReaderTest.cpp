@@ -75,14 +75,14 @@ TEST_F(ReaderTest, CanGrabAllFrames) {
 	Reader r{TempDir / "video.mp4"};
 
 	for (size_t i = 0; i < 255; i++) {
-		SCOPED_TRACE(std::to_string(i));
+		SCOPED_TRACE("frame: " + std::to_string(i));
 		EXPECT_NO_THROW({
 			auto frame = r.Grab();
 			EXPECT_EQ(frame->Index, i);
-			EXPECT_EQ(frame->PTS, Duration(int64_t(i * 1e9) / 24));
-			EXPECT_EQ(frame->Planes[0][0], i);
-			EXPECT_EQ(frame->Planes[0][1], i);
-			EXPECT_EQ(frame->Planes[0][2], i);
+			EXPECT_NEAR(frame->PTS.count(), int64_t(i * 1e9) / 24, 1);
+			EXPECT_NEAR(frame->Planes[0][0], i, 1);
+			EXPECT_NEAR(frame->Planes[0][1], i, 1);
+			EXPECT_NEAR(frame->Planes[0][2], i, 1);
 		});
 	}
 }

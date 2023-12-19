@@ -5,7 +5,9 @@ set(HDR_FILES Reader.cpp Frame.cpp)
 
 add_library(fort-video SHARED ${SRC_FILES} ${HDR_FILES})
 
-target_link_libraries(fort-video PkgConfig::ffmpeg cpptrace::cpptrace)
+target_link_libraries(
+	fort-video PkgConfig::ffmpeg cpptrace::cpptrace fort-charis::libfort-utils
+)
 
 if(NOT CHARIS_IMPORTED)
 	set(TEST_SRC_FILES ReaderTest.cpp)

@@ -30,7 +30,10 @@ if(FORT_CHARIS_BUILD_GL)
 endif(FORT_CHARIS_BUILD_GL)
 
 if(FORT_CHARIS_BUILD_VIDEO)
-
+	set(CPPTRACE_BUILD_SHARED
+		On
+		CACHE BOOL "Build shared lib" FORCE
+	)
 	FetchContent_Declare(
 		cpptrace
 		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
