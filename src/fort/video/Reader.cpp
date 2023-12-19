@@ -276,7 +276,11 @@ struct Reader::Implementation {
 		return ctx;
 	}
 
-	void seekFrame(size_t position) {
+	void seek(
+	    int64_t                              position,
+	    int                                  flags,
+	    std::function<bool(const Frame &)> &&predicate
+	) {
 		details::AVCall(
 		    avformat_seek_file,
 		    d_context.get(),
@@ -284,7 +288,7 @@ struct Reader::Implementation {
 		    0, // std::numeric_limits<int64_t>::min(),
 		    position,
 		    position,
-		    AVSEEK_FLAG_FRAME | AVSEEK_FLAG_BACKWARD
+		    flags | AVSEEK_FLAG_BACKWARD
 		);
 
 		avcodec_flush_buffers(d_codec.get());
@@ -301,7 +305,7 @@ struct Reader::Implementation {
 		do {
 			frame       = Grab(checkIFrame);
 			checkIFrame = false;
-		} while (frame && frame->Index < position);
+		} while (frame && predicate(*frame));
 		while (!d_queue.empty()) {
 			d_queue.pop();
 		}
@@ -344,10 +348,16 @@ std::unique_ptr<Frame, std::function<void(Frame *)>> Reader::Grab() {
 }
 
 void Reader::SeekFrame(size_t position) {
-	self->seekFrame(position);
+	self->seek(position, AVSEEK_FLAG_FRAME, [position](const Frame &f) {
+		return f.Index < position;
+	});
 }
 
-void Reader::SeekTime(video::Duration duration) {}
+void Reader::SeekTime(video::Duration duration) {
+	self->seek(duration.count(), 0, [pts = duration.count()](const Frame &f) {
+		return f.PTS.count() < pts;
+	});
+}
 
 } // namespace video
 } // namespace fort
