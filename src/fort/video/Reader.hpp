@@ -13,7 +13,8 @@ class Reader {
 public:
 	Reader(
 	    const std::filesystem::path &path,
-	    std::tuple<int, int>         targetSize = {-1, -1}
+	    PixelFormat                     = AV_PIX_FMT_GRAY8,
+	    std::tuple<int, int> targetSize = {-1, -1}
 	);
 
 	~Reader();

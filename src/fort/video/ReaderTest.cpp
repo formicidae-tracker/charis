@@ -117,5 +117,23 @@ TEST_F(ReaderTest, CanSeekBackward) {
 	EXPECT_EQ(frame->Planes[0][2], 64);
 }
 
+TEST_F(ReaderTest, CanSeekBackwardAfterReachingEnd) {
+	Reader r{TempDir / "video.mp4"};
+
+	for (size_t i = 0; i < 255; i++) {
+		r.Grab();
+	}
+	ASSERT_FALSE(r.Grab());
+
+	EXPECT_NO_THROW({ r.SeekFrame(64); });
+
+	auto frame = r.Grab();
+	ASSERT_TRUE(frame);
+	EXPECT_EQ(frame->Index, 64);
+	EXPECT_EQ(frame->Planes[0][0], 64);
+	EXPECT_EQ(frame->Planes[0][1], 64);
+	EXPECT_EQ(frame->Planes[0][2], 64);
+}
+
 } // namespace video
 } // namespace fort

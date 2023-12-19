@@ -1,12 +1,4 @@
 #include "Reader.hpp"
-#include "fort/utils/Defer.hpp"
-#include "fort/utils/ObjectPool.hpp"
-#include "fort/video/Frame.hpp"
-#include "fort/video/details/AVCall.hpp"
-#include <cpptrace/cpptrace.hpp>
-#include <functional>
-#include <queue>
-#include <utility>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -15,6 +7,19 @@ extern "C" {
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
 }
+
+#include <functional>
+#include <queue>
+#include <utility>
+
+#include <cpptrace/cpptrace.hpp>
+
+#include <fort/utils/Defer.hpp>
+#include <fort/utils/ObjectPool.hpp>
+
+#include "Frame.hpp"
+#include "Types.hpp"
+#include "details/AVCall.hpp"
 
 namespace fort {
 namespace video {
@@ -61,16 +66,19 @@ struct Reader::Implementation {
     };
 	FramePool::Ptr d_imagePool;
 	FrameQueue     d_queue;
-	size_t         d_next = 0;
+	PixelFormat    d_format = AV_PIX_FMT_GRAY8;
 
 	Implementation(
-	    const std::filesystem::path &path, std::tuple<int, int> targetSize
+	    const std::filesystem::path &path,
+	    PixelFormat                  format,
+	    std::tuple<int, int>         targetSize
 	)
 	    : d_context{open(path), [](AVFormatContext *c) {
 		                if (c) {
 			                avformat_close_input(&c);
 		                }
-	                }} {
+	    }}
+	    ,d_format{format} {
 		using namespace fort::video::details;
 		// Needed for mpeg2 formats
 		AVCall(avformat_find_stream_info, d_context.get(), nullptr);
@@ -114,24 +122,27 @@ struct Reader::Implementation {
 			outputHeight = d_codec->height;
 		}
 
-		d_imagePool = FramePool::Create([w = outputWidth, h = outputHeight]() {
-			auto res = new Frame{
-			    .Size = {w, h},
-			};
-			AVCall(
-			    av_image_alloc,
-			    res->Planes,
-			    res->Linesize,
-			    w,
-			    h,
-			    AV_PIX_FMT_GRAY8,
-			    16
-			);
-			return res;
-		});
+		d_imagePool = FramePool::Create(
+		    [w = outputWidth, h = outputHeight, pixelFormat = d_format]() {
+			    auto res = new Frame{
+			        .Format = pixelFormat,
+			        .Size   = {w, h},
+			    };
+			    AVCall(
+			        av_image_alloc,
+			        res->Planes,
+			        res->Linesize,
+			        w,
+			        h,
+			        pixelFormat,
+			        16
+			    );
+			    return res;
+		    }
+		);
 
 		if (d_codec->width != outputWidth || d_codec->height != outputHeight ||
-		    d_codec->pix_fmt != AV_PIX_FMT_GRAY8) {
+		    d_codec->pix_fmt != format) {
 			d_scaleContext = {
 			    sws_getContext(
 			        d_codec->width,
@@ -139,7 +150,7 @@ struct Reader::Implementation {
 			        d_codec->pix_fmt,
 			        outputWidth,
 			        outputHeight,
-			        AV_PIX_FMT_GRAY8,
+			        d_format,
 			        SWS_BILINEAR,
 			        nullptr,
 			        nullptr,
@@ -161,6 +172,7 @@ struct Reader::Implementation {
 		if (!d_packet) {
 			return nullptr;
 		}
+
 		try {
 			AVCall(av_read_frame, d_context.get(), d_packet.get());
 		} catch (const AVError &e) {
@@ -170,6 +182,7 @@ struct Reader::Implementation {
 				d_packet.reset();
 			}
 		}
+
 		defer {
 			if (d_packet) {
 				av_packet_unref(d_packet.get());
@@ -177,6 +190,7 @@ struct Reader::Implementation {
 		};
 
 		AVCall(avcodec_send_packet, d_codec.get(), d_packet.get());
+
 		while (true) {
 			try {
 				AVCall(avcodec_receive_frame, d_codec.get(), d_frame.get());
@@ -217,7 +231,7 @@ struct Reader::Implementation {
 				    newFrame->Linesize,
 				    const_cast<const uint8_t **>(d_frame->data),
 				    d_frame->linesize,
-				    AV_PIX_FMT_GRAY8,
+				    d_format,
 				    d_codec->width,
 				    d_codec->height
 				);
@@ -274,6 +288,13 @@ struct Reader::Implementation {
 		);
 
 		avcodec_flush_buffers(d_codec.get());
+
+		if (!d_packet) {
+			d_packet = {av_packet_alloc(), [](AVPacket *pkt) {
+				            av_packet_free(&pkt);
+			            }};
+		}
+
 		FramePool::ObjectPtr frame;
 
 		bool checkIFrame = true;
@@ -291,9 +312,11 @@ struct Reader::Implementation {
 };
 
 Reader::Reader(
-    const std::filesystem::path &path, std::tuple<int, int> targetSize
+    const std::filesystem::path &path,
+    PixelFormat                  format,
+    std::tuple<int, int>         targetSize
 )
-    : self{std::make_unique<Implementation>(path, targetSize)} {}
+    : self{std::make_unique<Implementation>(path, format, targetSize)} {}
 
 Reader::~Reader() = default;
 
