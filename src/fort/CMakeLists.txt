@@ -28,3 +28,28 @@ if(FORT_CHARIS_BUILD_GL)
 
 	add_subdirectory(gl)
 endif(FORT_CHARIS_BUILD_GL)
+
+if(FORT_CHARIS_BUILD_VIDEO)
+
+	FetchContent_Declare(
+		cpptrace
+		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
+		GIT_TAG v0.3.1 # <HASH or TAG>
+	)
+	FetchContent_MakeAvailable(cpptrace)
+
+	find_package(PkgConfig REQUIRED)
+
+	pkg_check_modules(
+		ffmpeg
+		REQUIRED
+		libavutil
+		libavcodec
+		libavformat
+		libswscale
+		IMPORTED_TARGET
+	)
+
+	add_subdirectory(video)
+
+endif(FORT_CHARIS_BUILD_VIDEO)
