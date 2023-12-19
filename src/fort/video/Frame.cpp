@@ -1,11 +1,29 @@
 #include "Frame.hpp"
+#include "details/AVCall.hpp"
 
 extern "C" {
 #include <libavutil/avutil.h>
+#include <libavutil/imgutils.h>
 }
 
 namespace fort {
 namespace video {
+
+Frame::Frame(int width, int height, PixelFormat format, int alignement)
+    : Format{format}
+    , Size{width, height} {
+
+	details::AVCall(
+	    av_image_alloc,
+	    Planes,
+	    Linesize,
+	    width,
+	    height,
+	    format,
+	    alignement
+	);
+}
+
 Frame::~Frame() {
 	av_freep(Planes);
 }

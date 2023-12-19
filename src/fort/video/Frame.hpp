@@ -9,6 +9,8 @@ namespace fort {
 namespace video {
 
 struct Frame {
+	Frame(int width, int height, PixelFormat format, int alignement = 16);
+
 	~Frame();
 	uint8_t	         *Planes[4];
 	int                  Linesize[4];

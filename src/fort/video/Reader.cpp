@@ -124,20 +124,7 @@ struct Reader::Implementation {
 
 		d_imagePool = FramePool::Create(
 		    [w = outputWidth, h = outputHeight, pixelFormat = d_format]() {
-			    auto res = new Frame{
-			        .Format = pixelFormat,
-			        .Size   = {w, h},
-			    };
-			    AVCall(
-			        av_image_alloc,
-			        res->Planes,
-			        res->Linesize,
-			        w,
-			        h,
-			        pixelFormat,
-			        16
-			    );
-			    return res;
+			    return new Frame(w, h, pixelFormat);
 		    }
 		);
 
