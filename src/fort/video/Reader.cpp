@@ -20,6 +20,7 @@ extern "C" {
 #include "Frame.hpp"
 #include "Types.hpp"
 #include "details/AVCall.hpp"
+#include "details/AVTypes.hpp"
 
 namespace fort {
 namespace video {
@@ -38,15 +39,6 @@ struct Reader::Implementation {
 	using AVFormatContextPtr =
 	    std::unique_ptr<AVFormatContext, void (*)(AVFormatContext *)>;
 
-	using AVCodecContextPtr =
-	    std::unique_ptr<AVCodecContext, void (*)(AVCodecContext *)>;
-
-	using AVPacketPtr = std::unique_ptr<AVPacket, void (*)(AVPacket *)>;
-
-	using AVFramePtr = std::unique_ptr<AVFrame, void (*)(AVFrame *)>;
-
-	using SwsContextPtr = std::unique_ptr<SwsContext, void (*)(SwsContext *)>;
-
 	using FrameQueue = std::priority_queue<
 	    FramePool::ObjectPtr,
 	    std::vector<FramePool::ObjectPtr>,
@@ -54,16 +46,14 @@ struct Reader::Implementation {
 
 	AVFormatContextPtr d_context = {nullptr, nullptr};
 	int                d_index   = -1;
-	AVCodecContextPtr  d_codec   = {nullptr, nullptr};
-	AVPacketPtr        d_packet  = {
-	            av_packet_alloc(),
-	            [](AVPacket *pkt) { av_packet_free(&pkt); },
-    };
-	SwsContextPtr d_scaleContext = {nullptr, nullptr};
-	AVFramePtr    d_frame        = {
-	              av_frame_alloc(),
-	              [](AVFrame *frame) { av_frame_free(&frame); },
-    };
+
+	details::AVCodecContextPtr d_codec;
+
+	details::AVPacketPtr   d_packet = details::AVPacketPtr{av_packet_alloc()};
+	details::AVFramePtr    d_frame  = details::AVFramePtr{av_frame_alloc()};
+
+	details::SwsContextPtr d_scaleContext;
+
 	FramePool::Ptr d_imagePool;
 	FrameQueue     d_queue;
 	PixelFormat    d_format = AV_PIX_FMT_GRAY8;
@@ -101,20 +91,14 @@ struct Reader::Implementation {
 			};
 		}
 
-		auto decCtx = avcodec_alloc_context3(dec);
-		if (decCtx == nullptr) {
-			throw cpptrace::runtime_error{
-			    "could not allocate  context for codec " +
-			    std::string(dec->long_name)};
-		}
-		d_codec = {decCtx, [](AVCodecContext *ctx) {
-			           if (ctx) {
-				           avcodec_free_context(&ctx);
-			           }
-		           }};
+		d_codec = details::MakeAVCodecContext(dec);
 
-		AVCall(avcodec_parameters_to_context, decCtx, Stream()->codecpar);
-		AVCall(avcodec_open2, decCtx, dec, nullptr);
+		AVCall(
+		    avcodec_parameters_to_context,
+		    d_codec.get(),
+		    Stream()->codecpar
+		);
+		AVCall(avcodec_open2, d_codec.get(), dec, nullptr);
 
 		auto [outputWidth, outputHeight] = targetSize;
 		if (outputWidth <= 0 || outputHeight <= 0) {
@@ -130,21 +114,18 @@ struct Reader::Implementation {
 
 		if (d_codec->width != outputWidth || d_codec->height != outputHeight ||
 		    d_codec->pix_fmt != format) {
-			d_scaleContext = {
-			    sws_getContext(
-			        d_codec->width,
-			        d_codec->height,
-			        d_codec->pix_fmt,
-			        outputWidth,
-			        outputHeight,
-			        d_format,
-			        SWS_BILINEAR,
-			        nullptr,
-			        nullptr,
-			        nullptr
-			    ),
-			    sws_freeContext,
-			};
+			d_scaleContext = SwsContextPtr{sws_getContext(
+			    d_codec->width,
+			    d_codec->height,
+			    d_codec->pix_fmt,
+			    outputWidth,
+			    outputHeight,
+			    d_format,
+			    SWS_BILINEAR,
+			    nullptr,
+			    nullptr,
+			    nullptr
+			)};
 		}
 	}
 
@@ -281,9 +262,7 @@ struct Reader::Implementation {
 		avcodec_flush_buffers(d_codec.get());
 
 		if (!d_packet) {
-			d_packet = {av_packet_alloc(), [](AVPacket *pkt) {
-				            av_packet_free(&pkt);
-			            }};
+			d_packet = details::AVPacketPtr{av_packet_alloc()};
 		}
 
 		FramePool::ObjectPtr frame;

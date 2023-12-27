@@ -1,12 +1,8 @@
-#pragma once
+#include <gtest/gtest.h>
 
 namespace fort {
 namespace video {
 
-namespace details {
-
-	class AVError
-	
-}
+class WriterTest : public ::testing::Test {};
 } // namespace video
 } // namespace fort

@@ -22,8 +22,8 @@ namespace video {
 class ReaderTest : public ::testing::Test {
 protected:
 	static std::filesystem::path TempDir;
-	const static int             WIDTH  = 40;
-	const static int             HEIGHT = 30;
+	constexpr static int         WIDTH  = 40;
+	constexpr static int         HEIGHT = 30;
 
 	static void SetUpTestSuite() {
 		std::string tmpDirtemplate = std::filesystem::temp_directory_path() /
@@ -68,7 +68,7 @@ TEST_F(ReaderTest, CanGetBaseInformations) {
 	Reader r{TempDir / "video.mp4"};
 	EXPECT_EQ(r.Length(), 255);
 	EXPECT_EQ(r.Duration(), Duration(int64_t(255e9) / 24));
-	EXPECT_EQ(r.Size(), std::make_tuple(WIDTH, HEIGHT));
+	EXPECT_EQ(r.Size(), std::make_tuple(ReaderTest::WIDTH, ReaderTest::HEIGHT));
 }
 
 TEST_F(ReaderTest, CanGrabAllFrames) {

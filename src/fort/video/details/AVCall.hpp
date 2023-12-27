@@ -43,6 +43,15 @@ int AVCall(Function &&fn, Args &&...args) {
 	return res;
 }
 
+template <typename Object, typename Function, typename... Args>
+Object *AVAlloc(Function &&fn, Args &&...args) {
+	Object *res = std::forward<Function>(fn)(std::forward<Args>(args)...);
+	if (res == nullptr) {
+		throw AVError(AVERROR(ENOMEM), std::forward<Function>(fn));
+	}
+	return res;
+}
+
 } // namespace details
 } // namespace video
 } // namespace fort
