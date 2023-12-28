@@ -12,6 +12,10 @@ struct Frame {
 	Frame(int width, int height, PixelFormat format, int alignement = 16);
 
 	~Frame();
+
+	Frame(const Frame &other)            = delete;
+	Frame &operator=(const Frame &other) = delete;
+
 	uint8_t	         *Planes[4];
 	int                  Linesize[4];
 	PixelFormat          Format;

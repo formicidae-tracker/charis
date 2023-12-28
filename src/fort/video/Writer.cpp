@@ -2,12 +2,18 @@
 #include "Encoder.hpp"
 #include "details/AVCall.hpp"
 #include <fort/utils/Defer.hpp>
-#include <libavutil/dict.h>
+#include <iostream>
+#include <libavcodec/packet.h>
+#include <libavutil/mathematics.h>
 #include <memory>
 
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>
+}
+
+std::ostream &operator<<(std::ostream &out, const AVRational &r) {
+	return out << r.num << "/" << r.den;
 }
 
 namespace fort {
@@ -21,6 +27,7 @@ struct Writer::Implementation {
 	AVFormatContextPtr       d_context;
 	std::unique_ptr<Encoder> d_encoder;
 	AVStream	            *d_stream;
+	int64_t                  d_next = 0;
 
 	Implementation(Params &&muxerParams, Encoder::Params &&encoderParams)
 	    : d_context{nullptr, [](AVFormatContext *) {}}
@@ -28,27 +35,54 @@ struct Writer::Implementation {
 		open(muxerParams);
 	}
 
+	~Implementation() {
+		using namespace fort::video::details;
+		d_encoder->Flush();
+		while (true) {
+			auto pkt = d_encoder->Receive();
+
+			if (!pkt) {
+				break;
+			}
+
+			Write(pkt.get());
+		}
+
+		if ((d_context->oformat->flags & AVFMT_NOFILE) == 0 &&
+		    d_context->pb != nullptr) {
+			AVCall(av_write_trailer, d_context.get());
+			avio_closep(&d_context->pb);
+		}
+	}
+
 	void Write(AVPacket *pkt) {
 		pkt->stream_index = d_stream->index;
+		av_packet_rescale_ts(
+		    pkt,
+		    d_encoder->CodecContext()->time_base,
+		    d_stream->time_base
+		);
 		details::AVCall(av_interleaved_write_frame, d_context.get(), pkt);
 	}
 
 	void Write(const Frame &frame) {
-		d_encoder->Send(frame);
+		d_encoder->Send(frame, d_next++);
 		while (true) {
 			auto pkt = d_encoder->Receive();
+
 			if (!pkt) {
 				break;
 			}
+
 			Write(pkt.get());
 		}
 	}
 
 	void open(const Params &params) {
-
+		using namespace fort::video::details;
 		AVFormatContext *ctx{nullptr};
 
-		details::AVCall(
+		AVCall(
 		    avformat_alloc_output_context2,
 		    &ctx,
 		    nullptr,
@@ -56,27 +90,18 @@ struct Writer::Implementation {
 		    params.Path.c_str()
 		);
 
-		d_context = AVFormatContextPtr{
-		    ctx,
-		    [](AVFormatContext *ctx) {
-			    if ((ctx->oformat->flags & AVFMT_NOFILE) == 0 &&
-			        ctx->pb != nullptr) {
-				    details::AVCall(av_write_trailer, ctx);
-				    avio_closep(&ctx->pb);
-			    }
-			    avformat_free_context(ctx);
-		    },
-		};
+		d_context = AVFormatContextPtr{ctx, avformat_free_context};
 
 		// we don't use a smart pointer as the stream is owned by the context.
-		d_stream = details::AVAlloc<AVStream>(
-		    avformat_new_stream,
-		    d_context.get(),
-		    nullptr
-		);
+		d_stream =
+		    AVAlloc<AVStream>(avformat_new_stream, d_context.get(), nullptr);
 
-		auto timebase       = d_encoder->Timebase();
-		d_stream->time_base = AVRational{timebase.Num, timebase.Den};
+		d_stream->time_base = d_encoder->CodecContext()->time_base;
+		AVCall(
+		    avcodec_parameters_from_context,
+		    d_stream->codecpar,
+		    d_encoder->CodecContext()
+		);
 
 		if (d_context->oformat->flags & AVFMT_GLOBALHEADER) {
 			d_context->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -84,7 +109,7 @@ struct Writer::Implementation {
 		d_stream->id = d_context->nb_streams - 1;
 
 		if ((d_context->oformat->flags & AVFMT_NOFILE) == 0) {
-			details::AVCall(
+			AVCall(
 			    avio_open,
 			    &d_context->pb,
 			    params.Path.c_str(),
@@ -100,7 +125,7 @@ struct Writer::Implementation {
 		};
 		if (!params.MuxerOptionKey.empty() &&
 		    !params.MuxerOptionValue.empty()) {
-			details::AVCall(
+			AVCall(
 			    av_dict_set,
 			    &opts,
 			    params.MuxerOptionKey.c_str(),
@@ -109,7 +134,7 @@ struct Writer::Implementation {
 			);
 		}
 
-		details::AVCall(avformat_write_header, d_context.get(), &opts);
+		AVCall(avformat_write_header, d_context.get(), &opts);
 	}
 };
 

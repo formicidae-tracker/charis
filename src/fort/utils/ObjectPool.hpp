@@ -73,12 +73,16 @@ public:
 		return Ptr{new ObjectPool(Constructor{}, Deleter{})};
 	}
 
-	inline ObjectPtr Get() {
+	template <typename... Function>
+	inline ObjectPtr Get(Function &&...onDelete) {
 		T *res = nullptr;
 
 		auto self = this->shared_from_this();
 
-		auto enqueue = [self](T *t) { self->d_queue.enqueue(t); };
+		auto enqueue = [self, onDelete...](T *t) {
+			(onDelete(t), ...);
+			self->d_queue.enqueue(t);
+		};
 
 		if (d_queue.try_dequeue(res) == true) {
 			return {res, enqueue};
@@ -86,6 +90,13 @@ public:
 		res = d_constructor();
 		return {res, enqueue};
 	}
+
+inline ObjectPtr
+Get(std::function<void(T *)> onDelete) {
+
+	T   *res  = nullptr;
+	auto self = this->shared_from_this();
+}
 
 private:
 	using Queue = moodycamel::ConcurrentQueue<T *>;

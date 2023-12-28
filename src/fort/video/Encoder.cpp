@@ -14,6 +14,8 @@ extern "C" {
 #include "details/AVCall.hpp"
 #include "details/AVTypes.hpp"
 
+#include <iostream>
+
 namespace fort {
 namespace video {
 
@@ -33,19 +35,29 @@ struct Encoder::Implementation {
 	details::SwsContextPtr     d_scale;
 
 	Implementation(Encoder::Params &&params) {
+		using namespace fort::video::details;
+
 		auto enc = avcodec_find_encoder_by_name(params.Codec.c_str());
 		if (enc == nullptr) {
 			throw cpptrace::runtime_error{
 			    "could not found codec '" + params.Codec + "'",
 			};
 		}
-		d_codec            = details::MakeAVCodecContext(enc);
+
+		d_codec            = MakeAVCodecContext(enc);
 		d_codec->width     = std::get<0>(params.Size);
 		d_codec->height    = std::get<1>(params.Size);
 		d_codec->time_base = {params.Framerate.Den, params.Framerate.Num};
 		d_codec->pix_fmt   = AV_PIX_FMT_YUV420P;
+		d_codec->bit_rate  = params.BitRate;
+		d_codec->rc_buffer_size =
+		    std::max(2 * params.BitRate, params.MaxBitRate);
+		d_codec->rc_min_rate = params.MinBitRate;
+		d_codec->rc_max_rate = params.MaxBitRate;
 
-		details::AVCall(
+		AVCall(avcodec_open2, d_codec.get(), enc, nullptr);
+
+		AVCall(
 		    av_opt_set,
 		    d_codec->priv_data,
 		    params.ParamID.c_str(),
@@ -57,10 +69,10 @@ struct Encoder::Implementation {
 		d_frame->width  = d_codec->width;
 		d_frame->height = d_codec->height;
 
-		details::AVCall(av_frame_get_buffer, d_frame.get(), 0);
+		AVCall(av_frame_get_buffer, d_frame.get(), 0);
 
 		if (params.Format != AV_PIX_FMT_YUV420P) {
-			d_scale = details::SwsContextPtr{sws_getContext(
+			d_scale = SwsContextPtr{sws_getContext(
 			    d_codec->width,
 			    d_codec->height,
 			    params.Format,
@@ -76,7 +88,7 @@ struct Encoder::Implementation {
 	}
 
 	PacketPool::ObjectPtr Receive() {
-		auto pkt = d_pool->Get();
+		auto pkt = d_pool->Get(av_packet_unref);
 		try {
 			details::AVCall(avcodec_receive_packet, d_codec.get(), pkt.get());
 		} catch (const details::AVError &e) {
@@ -85,14 +97,11 @@ struct Encoder::Implementation {
 			}
 			throw;
 		}
-		auto del = pkt.get_deleter();
-		return {pkt.get(), [del](AVPacket *pkt) {
-			        av_packet_unref(pkt);
-			        del(pkt);
-		        }};
+		return pkt;
 	}
 
-	void Send(const Frame &f) {
+	void Send(const Frame &f, int64_t pts) {
+		details::AVCall(av_frame_make_writable, d_frame.get());
 		if (d_scale) {
 			details::AVCall(
 			    sws_scale,
@@ -115,6 +124,7 @@ struct Encoder::Implementation {
 			    d_codec->height
 			);
 		}
+		d_frame->pts = pts;
 		details::AVCall(avcodec_send_frame, d_codec.get(), d_frame.get());
 	}
 
@@ -128,13 +138,12 @@ Encoder::Encoder(Params &&params)
 
 Encoder::~Encoder() = default;
 
-void Encoder::Send(const Frame &frame) {
-	self->Send(frame);
+void Encoder::Send(const Frame &frame, int64_t pts) {
+	self->Send(frame, pts);
 }
 
-Ratio<int> Encoder::Timebase() const noexcept {
-	const auto &tb = self->d_codec->time_base;
-	return {tb.num, tb.den};
+AVCodecContext *Encoder::CodecContext() const {
+	return self->d_codec.get();
 }
 
 std::unique_ptr<AVPacket, std::function<void(AVPacket *)>> Encoder::Receive() {

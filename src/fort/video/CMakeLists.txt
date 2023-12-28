@@ -17,7 +17,7 @@ if(NOT CHARIS_IMPORTED)
 	add_executable(charis-video-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})
 	target_link_libraries(charis-video-tests fort-video GTest::gtest_main)
 
-	gtest_discover_tests(charis-video-tests)
+	add_test(NAME fort-video COMMAND charis-video-tests)
 	add_dependencies(check charis-video-tests)
 else(NOT CHARIS_IMPORTED)
 	add_library(fort-charis::libfort-video INTERFACE IMPORTED GLOBAL)
