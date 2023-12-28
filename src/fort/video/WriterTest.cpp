@@ -5,6 +5,7 @@
 #include <fort/video/Writer.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <libavutil/pixfmt.h>
 #include <string>
 
 extern "C" {
@@ -113,5 +114,54 @@ TEST_F(WriterTest, CanEncodeGray8) {
 		}
 	}
 }
+
+TEST_F(WriterTest, CanEncodeYUV) {
+	auto path = TempDir / "generated-yuv.mp4";
+	{
+		Writer w{
+		    Writer::Params{.Path = path},
+		    Encoder::Params{
+		        .Size{40, 30},
+		        .Framerate = {24, 1},
+		        .Format    = AV_PIX_FMT_YUV420P,
+		    }};
+		Frame frame{40, 30, AV_PIX_FMT_YUV420P};
+
+		for (const auto &data : Frames) {
+			const uint8_t *planes[4] = {
+			    &(data[0]),
+			    &(data[FULL_PLANE_SIZE]),
+			    &(data[FULL_PLANE_SIZE + QUARTER_PLANE_SIZE]),
+			    nullptr,
+			};
+			int linesizes[4] = {WIDTH, WIDTH / 2, WIDTH / 2, 0};
+
+			av_image_copy(
+			    frame.Planes,
+			    frame.Linesize,
+			    planes,
+			    linesizes,
+			    AV_PIX_FMT_YUV420P,
+			    WIDTH,
+			    HEIGHT
+			);
+
+			w.Write(frame);
+		}
+	}
+
+	Reader r{path, AV_PIX_FMT_YUV420P};
+	ASSERT_EQ(r.Size(), std::make_tuple(WIDTH, HEIGHT));
+
+	for (int i = 0; i < 255; i++) {
+		SCOPED_TRACE(std::to_string(i));
+		auto f = r.Grab();
+		EXPECT_TRUE(f);
+		if (f) {
+			EXPECT_NEAR(f->Planes[0][0], Frames[i][0], 1);
+		}
+	}
+}
+
 } // namespace video
 } // namespace fort
