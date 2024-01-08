@@ -55,9 +55,9 @@
 
 namespace fort {
 
-class TimeUTest : public ::testing::Test {};
+class DurationUTest : public ::testing::Test {};
 
-TEST_F(TimeUTest, DurationCast) {
+TEST_F(DurationUTest, Cast) {
 	Duration b(std::chrono::hours(1));
 
 	EXPECT_EQ(b.Hours(), 1.0);
@@ -68,7 +68,7 @@ TEST_F(TimeUTest, DurationCast) {
 	EXPECT_EQ(b.Nanoseconds(), 3.6e12);
 }
 
-TEST_F(TimeUTest, DurationParsing) {
+TEST_F(DurationUTest, Parsing) {
 	// dataset taken from golang sources
 
 	struct TestData {
@@ -195,7 +195,7 @@ TEST_F(TimeUTest, DurationParsing) {
 	}
 }
 
-TEST_F(TimeUTest, DurationFormatting) {
+TEST_F(DurationUTest, Formatting) {
 	struct TestData {
 		std::string Expected;
 		Duration    Value;
@@ -224,6 +224,14 @@ TEST_F(TimeUTest, DurationFormatting) {
 		EXPECT_EQ(os.str(), d.Expected);
 	}
 }
+
+TEST_F(DurationUTest, Arithmetic) {
+	EXPECT_EQ((3 * Duration::Second).Seconds(), 3.0);
+
+	EXPECT_EQ((4 * Duration::Second) / 2, 2 * Duration::Second);
+}
+
+class TimeUTest : public ::testing::Test {};
 
 TEST_F(TimeUTest, HasMonotonicClock) {
 

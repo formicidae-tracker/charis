@@ -24,6 +24,7 @@
 #include <string>
 
 #include <google/protobuf/timestamp.pb.h>
+#include <type_traits>
 
 /**
  * the fort namespace
@@ -51,14 +52,15 @@ public:
 	 *
 	 * @param ns the number of nanosecond
 	 */
-	inline Duration(int64_t ns)
-	    : d_nanoseconds(ns) {}
+	template <typename T, std::enable_if<std::is_integral_v<T>> * = nullptr>
+	inline Duration(T ns)
+	    : d_nanoseconds{int64_t(ns)} {}
 
 	/**
 	 * Default constructor with a zero duration.
 	 */
 	inline Duration()
-	    : d_nanoseconds(0) {}
+	    : d_nanoseconds{0} {}
 
 	/**
 	 * constructor from std::chrono::duration
@@ -184,6 +186,18 @@ public:
 	 */
 	inline Duration operator*(const fort::Duration &other) const {
 		return d_nanoseconds * other.d_nanoseconds;
+	}
+
+	/**
+	 * Division operator
+	 * @param other the other Duration to multiply.
+	 *
+	 * Divides two Duration.
+	 *
+	 * @return a new duration `this * other `
+	 */
+	inline Duration operator/(const fort::Duration &other) const {
+		return d_nanoseconds / other.d_nanoseconds;
 	}
 
 	/**
