@@ -11,7 +11,7 @@ namespace video {
 
 namespace details {
 
-class AVError : cpptrace::runtime_error {
+class AVError : public cpptrace::runtime_error {
 public:
 	template <typename Function>
 	AVError(int error, Function &&fn) noexcept
