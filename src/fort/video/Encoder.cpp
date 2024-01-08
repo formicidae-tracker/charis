@@ -1,6 +1,8 @@
 #include <cpptrace/cpptrace.hpp>
 
 #include <fort/utils/ObjectPool.hpp>
+#include <fort/video/Types.hpp>
+#include <stdexcept>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -16,11 +18,18 @@ extern "C" {
 
 #include <iostream>
 
+template <typename T, std::enable_if_t<std::is_integral_v<T>> * = nullptr>
+std::string to_string(const std::tuple<T, T> &v) {
+	return std::to_string(std::get<0>(v)) + "x" +
+	       std::to_string(std::get<1>(v));
+}
+
 namespace fort {
 namespace video {
 
 struct Encoder::Implementation {
 
+	PixelFormat d_expectedFormat;
 	using PacketPool = utils::ObjectPool<
 	    AVPacket,
 	    std::function<AVPacket *()>,
@@ -34,7 +43,8 @@ struct Encoder::Implementation {
 	details::AVCodecContextPtr d_codec;
 	details::SwsContextPtr     d_scale;
 
-	Implementation(Encoder::Params &&params) {
+	Implementation(Encoder::Params &&params)
+	    : d_expectedFormat{params.Format} {
 		using namespace fort::video::details;
 
 		auto enc = avcodec_find_encoder_by_name(params.Codec.c_str());
@@ -101,6 +111,19 @@ struct Encoder::Implementation {
 	}
 
 	void Send(const Frame &f, int64_t pts) {
+		if (f.Format != d_expectedFormat ||
+		    f.Size != std::make_tuple(d_frame->width, d_frame->height)) {
+			char current[200], expected[200];
+			av_get_pix_fmt_string(current, 200, f.Format);
+			av_get_pix_fmt_string(expected, 200, d_expectedFormat);
+
+			throw std::invalid_argument{
+			    std::string{"invalid input frame {format: "} + current +
+			    ", size: " + to_string(f.Size) +
+			    "}, expected {format: " + expected + ", size: " +
+			    to_string(std::make_tuple(d_frame->width, d_frame->height))};
+		}
+
 		details::AVCall(av_frame_make_writable, d_frame.get());
 		if (d_scale) {
 			details::AVCall(
