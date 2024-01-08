@@ -1,0 +1,3 @@
+#pragma once
+
+#define FORT_TIME_VERSION "@FORT_TIME_VERSION@"

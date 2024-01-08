@@ -1,3 +1,7 @@
+if(FORT_CHARIS_BUILD_TIME)
+	add_subdirectory(time)
+endif(FORT_CHARIS_BUILD_TIME)
+
 FetchContent_Declare(
 	concurrentqueue
 	GIT_REPOSITORY https://github.com/cameron314/concurrentqueue.git
