@@ -98,15 +98,14 @@ struct Encoder::Implementation {
 	}
 
 	PacketPool::ObjectPtr Receive() {
-		auto pkt = d_pool->Get(av_packet_unref);
-		try {
-			details::AVCall(avcodec_receive_packet, d_codec.get(), pkt.get());
-		} catch (const details::AVError &e) {
-			if (e.Code() == AVERROR(EAGAIN) || e.Code() == AVERROR_EOF) {
-				return nullptr;
-			}
-			throw;
+		auto pkt   = d_pool->Get(av_packet_unref);
+		int  error = avcodec_receive_packet(d_codec.get(), pkt.get());
+		if (error == AVERROR(EAGAIN) || error == AVERROR_EOF) {
+			return nullptr;
+		} else if (error < 0) {
+			throw details::AVError(error, avcodec_receive_frame);
 		}
+
 		return pkt;
 	}
 

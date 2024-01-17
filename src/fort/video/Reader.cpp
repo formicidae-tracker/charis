@@ -1,4 +1,5 @@
 #include "Reader.hpp"
+#include <libavutil/error.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -141,11 +142,10 @@ struct Reader::Implementation {
 			return nullptr;
 		}
 
-		try {
-			AVCall(av_read_frame, d_context.get(), d_packet.get());
-		} catch (const AVError &e) {
-			if (e.Code() != AVERROR_EOF) {
-				throw;
+		int error = av_read_frame(d_context.get(), d_packet.get());
+		if (error < 0) {
+			if (error != AVERROR_EOF) {
+				throw AVError(error, av_read_frame);
 			} else {
 				d_packet.reset();
 			}
@@ -160,13 +160,11 @@ struct Reader::Implementation {
 		AVCall(avcodec_send_packet, d_codec.get(), d_packet.get());
 
 		while (true) {
-			try {
-				AVCall(avcodec_receive_frame, d_codec.get(), d_frame.get());
-			} catch (const AVError &e) {
-				if (e.Code() == AVERROR(EAGAIN) || e.Code() == AVERROR_EOF) {
-					break;
-				}
-				throw;
+			int error = avcodec_receive_frame(d_codec.get(), d_frame.get());
+			if (error == AVERROR(EAGAIN) || error == AVERROR_EOF) {
+				break;
+			} else if (error < 0) {
+				throw AVError(error, avcodec_receive_frame);
 			}
 
 			defer {

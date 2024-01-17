@@ -43,7 +43,13 @@ if(FORT_CHARIS_BUILD_VIDEO)
 		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
 		GIT_TAG v0.3.1 # <HASH or TAG>
 	)
-	FetchContent_MakeAvailable(cpptrace)
+	FetchContent_Declare(
+		spng
+		GIT_REPOSITORY https://github.com/randy408/libspng.git
+		GIT_TAG v0.7.4
+	)
+
+	FetchContent_MakeAvailable(cpptrace spng)
 
 	find_package(PkgConfig REQUIRED)
 

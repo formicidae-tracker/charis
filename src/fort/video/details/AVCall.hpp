@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cpptrace/cpptrace.hpp>
+#include <fort/video/details/FunctionName.hpp>
 #include <utility>
 extern "C" {
 #include <libavutil/error.h>
@@ -22,7 +23,7 @@ public:
 	static std::string Reason(int error, Function &&fn) noexcept {
 		char buffer[1024];
 		av_strerror(error, buffer, 1024);
-		return cpptrace::demangle(typeid(Function).name()) + " error (" +
+		return FunctionName(std::forward<Function>(fn)) + "() error (" +
 		       std::to_string(error) + "): " + buffer;
 	}
 
