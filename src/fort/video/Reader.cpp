@@ -23,6 +23,8 @@ extern "C" {
 #include "details/AVCall.hpp"
 #include "details/AVTypes.hpp"
 
+#include <iostream>
+
 namespace fort {
 namespace video {
 
@@ -301,6 +303,16 @@ Duration Reader::Duration() const noexcept {
 	        {1, int64_t(1e9)}
 	    ),
 	};
+}
+
+Duration Reader::AverageFrameDuration() const noexcept {
+	std::cerr << self->Stream()->time_base.num << "/"
+	          << self->Stream()->time_base.den << std::endl;
+	return video::Duration{av_rescale(
+	    self->Stream()->avg_frame_rate.den,
+	    1e9,
+	    self->Stream()->avg_frame_rate.num
+	)};
 }
 
 size_t Reader::Length() const noexcept {

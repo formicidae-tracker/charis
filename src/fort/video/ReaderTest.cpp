@@ -68,6 +68,7 @@ TEST_F(ReaderTest, CanGetBaseInformations) {
 	Reader r{TempDir / "video.mp4"};
 	EXPECT_EQ(r.Length(), 255);
 	EXPECT_EQ(r.Duration(), Duration(int64_t(255e9) / 24));
+	EXPECT_NEAR(r.AverageFrameDuration().count(), int64_t(1e9) / 24, 1);
 	EXPECT_EQ(r.Size(), std::make_tuple(ReaderTest::WIDTH, ReaderTest::HEIGHT));
 }
 

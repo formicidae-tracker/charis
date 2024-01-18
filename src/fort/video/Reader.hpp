@@ -25,6 +25,8 @@ public:
 
 	size_t Length() const noexcept;
 
+	video::Duration AverageFrameDuration() const noexcept;
+
 	void SeekFrame(size_t position);
 
 	void SeekTime(video::Duration duration);
