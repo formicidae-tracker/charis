@@ -5,11 +5,11 @@
 #include <fort/video/Writer.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
-#include <libavutil/pixfmt.h>
 #include <string>
 
 extern "C" {
 #include <libavutil/imgutils.h>
+#include <libavutil/log.h>
 }
 
 namespace fort {
@@ -58,6 +58,7 @@ protected:
 		if (res != 0) {
 			throw std::runtime_error("could not re-encode video in mp4");
 		}
+		av_log_set_level(AV_LOG_QUIET);
 	}
 
 	static void TearDownTestSuite() {

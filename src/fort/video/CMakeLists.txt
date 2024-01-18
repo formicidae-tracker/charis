@@ -1,9 +1,15 @@
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
-set(SRC_FILES Reader.hpp Frame.hpp details/AVCall.hpp details/AVTypes.hpp
-			  Writer.hpp Encoder.hpp
+set(HDR_FILES
+	Reader.hpp
+	Frame.hpp
+	details/AVCall.hpp
+	details/AVTypes.hpp
+	Writer.hpp
+	Encoder.hpp
+	PNG.hpp
 )
-set(HDR_FILES Reader.cpp Frame.cpp Writer.cpp Encoder.cpp)
+set(SRC_FILES Reader.cpp Frame.cpp Writer.cpp Encoder.cpp PNG.cpp)
 
 add_library(fort-video SHARED ${SRC_FILES} ${HDR_FILES})
 
@@ -14,7 +20,7 @@ target_link_libraries(
 
 if(NOT CHARIS_IMPORTED)
 	set(TEST_SRC_FILES ReaderTest.cpp WriterTest.cpp details/SPNGCallTest.cpp
-					   details/AVCallTest.cpp
+					   details/AVCallTest.cpp PNGTest.cpp
 	)
 	set(TEST_HDR_FILES)
 	add_executable(charis-video-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})
