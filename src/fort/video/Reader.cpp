@@ -60,6 +60,7 @@ struct Reader::Implementation {
 	FramePool::Ptr d_imagePool;
 	FrameQueue     d_queue;
 	PixelFormat    d_format = AV_PIX_FMT_GRAY8;
+	size_t         d_next   = 0;
 
 	Implementation(
 	    const std::filesystem::path &path,
@@ -215,6 +216,7 @@ struct Reader::Implementation {
 			    Stream()->time_base,
 			    {Stream()->avg_frame_rate.den, Stream()->avg_frame_rate.num}
 			);
+			d_next = newFrame->Index + 1;
 
 			d_queue.push(std::move(newFrame));
 		}
@@ -279,6 +281,13 @@ struct Reader::Implementation {
 			d_queue.push(std::move(frame));
 		}
 	}
+
+	size_t Position() const noexcept {
+		if (!d_queue.empty()) {
+			return d_queue.top()->Index;
+		}
+		return d_next;
+	}
 };
 
 Reader::Reader(
@@ -333,6 +342,10 @@ void Reader::SeekTime(video::Duration duration) {
 	self->seek(duration.count(), 0, [pts = duration.count()](const Frame &f) {
 		return f.PTS.count() < pts;
 	});
+}
+
+size_t Reader::Position() const noexcept {
+	return self->Position();
 }
 
 } // namespace video
