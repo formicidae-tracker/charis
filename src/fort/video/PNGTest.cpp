@@ -1,10 +1,12 @@
 #include <charconv>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fort/video/Frame.hpp>
 #include <fort/video/PNG.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <libavutil/log.h>
 #include <memory>
 extern "C" {
 #include <libavutil/pixdesc.h>
@@ -130,6 +132,47 @@ TEST_F(PNGTest, CanReadRGBImage) {
 		EXPECT_EQ(rgb->Planes[0][3 * i + 0], RGB[3 * i + 0]);
 		EXPECT_EQ(rgb->Planes[0][3 * i + 1], RGB[3 * i + 1]);
 		EXPECT_EQ(rgb->Planes[0][3 * i + 2], RGB[3 * i + 2]);
+	}
+}
+
+TEST_F(PNGTest, CanWriteGrayImage) {
+	auto gray =
+	    std::make_unique<video::Frame>(WIDTH, HEIGHT, AV_PIX_FMT_GRAY8, 4);
+
+	memcpy(gray->Planes[0], Gray.data(), SIZE);
+
+	auto path = TempDir / "gray-w.png";
+
+	EXPECT_NO_THROW(WritePNG(path, *gray));
+
+	std::unique_ptr<video::Frame> res;
+	EXPECT_NO_THROW({ res = ReadPNG(path); });
+	ASSERT_EQ(res->Format, AV_PIX_FMT_GRAY8);
+	ASSERT_EQ(res->Size, std::make_tuple(WIDTH, HEIGHT));
+	for (int i = 0; i < SIZE; i++) {
+		SCOPED_TRACE(std::to_string(i));
+		EXPECT_EQ(res->Planes[0][i], Gray[i]);
+	}
+}
+
+TEST_F(PNGTest, CanWriteRGBImage) {
+	auto rgb =
+	    std::make_unique<video::Frame>(WIDTH, HEIGHT, AV_PIX_FMT_RGB24, 4);
+
+	memcpy(rgb->Planes[0], RGB.data(), 3 * SIZE);
+	auto path = TempDir / "rgb-w.png";
+	EXPECT_NO_THROW(WritePNG(path, *rgb));
+
+	std::unique_ptr<video::Frame> res;
+	EXPECT_NO_THROW({ res = ReadPNG(path, AV_PIX_FMT_RGB24); });
+	ASSERT_EQ(res->Format, AV_PIX_FMT_RGB24);
+	ASSERT_EQ(res->Size, std::make_tuple(WIDTH, HEIGHT));
+
+	for (int i = 0; i < SIZE; i++) {
+		SCOPED_TRACE(std::to_string(i));
+		EXPECT_EQ(res->Planes[0][3 * i + 0], RGB[3 * i + 0]);
+		EXPECT_EQ(res->Planes[0][3 * i + 1], RGB[3 * i + 1]);
+		EXPECT_EQ(res->Planes[0][3 * i + 2], RGB[3 * i + 2]);
 	}
 }
 

@@ -85,7 +85,7 @@ ReadPNG(const std::filesystem::path &path, PixelFormat format) {
 		while (true) {
 			details::SPNGCall(spng_get_row_info, ctx, &rowInfo);
 
-			// note that image_u8 is not necessarly packed, use stride
+			// note that video::Frame is not necessarly packed, use stride
 			// instead of width.
 			uint8_t *rowAddr =
 			    res->Planes[0] + res->Linesize[0] * rowInfo.row_num;
@@ -144,12 +144,7 @@ void WritePNG(const std::filesystem::path &path, const video::Frame &frame) {
 			uint8_t *addr =
 			    frame.Planes[0] + frame.Linesize[0] * rowInfo.row_num;
 
-			details::SPNGCall(
-			    spng_encode_row,
-			    ctx,
-			    addr,
-			    std::get<0>(frame.Size)
-			);
+			details::SPNGCall(spng_encode_row, ctx, addr, frame.Linesize[0]);
 		}
 	} catch (const details::SPNGError &e) {
 		if (e.Code() != SPNG_EOI) {
