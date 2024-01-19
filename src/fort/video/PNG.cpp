@@ -119,8 +119,8 @@ void WritePNG(const std::filesystem::path &path, const video::Frame &frame) {
 	details::SPNGCall(spng_set_png_file, ctx, file);
 
 	struct spng_ihdr ihdr {
-		.width  = uint32_t(std::get<0>(frame.Size)),
-		.height = uint32_t(std::get<1>(frame.Size)), .bit_depth = 8,
+		.width  = uint32_t(frame.Size.Width),
+		.height = uint32_t(frame.Size.Height), .bit_depth = 8,
 		.color_type = colorType, .filter_method = SPNG_FILTER_NONE,
 		.interlace_method = SPNG_INTERLACE_NONE,
 	};

@@ -1,5 +1,6 @@
 #include "Reader.hpp"
-#include <libavutil/error.h>
+#include <google/protobuf/descriptor.h>
+#include <memory>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -20,6 +21,7 @@ extern "C" {
 
 #include "Frame.hpp"
 #include "Types.hpp"
+#include "TypesIO.hpp"
 #include "details/AVCall.hpp"
 #include "details/AVTypes.hpp"
 
@@ -37,30 +39,24 @@ template <typename Frame> struct FrameOrderer {
 } // namespace details
 
 struct Reader::Implementation {
-	using FramePool = utils::ObjectPool<Frame, std::function<Frame *()>>;
-
 	using AVFormatContextPtr =
 	    std::unique_ptr<AVFormatContext, void (*)(AVFormatContext *)>;
-
-	using FrameQueue = std::priority_queue<
-	    FramePool::ObjectPtr,
-	    std::vector<FramePool::ObjectPtr>,
-	    details::FrameOrderer<FramePool::ObjectPtr>>;
 
 	AVFormatContextPtr d_context = {nullptr, nullptr};
 	int                d_index   = -1;
 
 	details::AVCodecContextPtr d_codec;
 
-	details::AVPacketPtr   d_packet = details::AVPacketPtr{av_packet_alloc()};
-	details::AVFramePtr    d_frame  = details::AVFramePtr{av_frame_alloc()};
+	details::AVPacketPtr d_packet = details::AVPacketPtr{av_packet_alloc()};
+	details::AVFramePtr  d_frame  = details::AVFramePtr{av_frame_alloc()};
 
 	details::SwsContextPtr d_scaleContext;
 
-	FramePool::Ptr d_imagePool;
-	FrameQueue     d_queue;
-	PixelFormat    d_format = AV_PIX_FMT_GRAY8;
-	size_t         d_next   = 0;
+	PixelFormat          d_format = AV_PIX_FMT_GRAY8;
+	Resolution           d_size;
+
+	size_t d_next   = 0;
+	bool   d_queued = false;
 
 	Implementation(
 	    const std::filesystem::path &path,
@@ -109,13 +105,7 @@ struct Reader::Implementation {
 			outputWidth  = d_codec->width;
 			outputHeight = d_codec->height;
 		}
-
-		d_imagePool = FramePool::Create(
-		    [w = outputWidth, h = outputHeight, pixelFormat = d_format]() {
-			    return new Frame(w, h, pixelFormat);
-		    }
-		);
-
+		d_size = {outputWidth, outputHeight};
 		if (d_codec->width != outputWidth || d_codec->height != outputHeight ||
 		    d_codec->pix_fmt != format) {
 			d_scaleContext = SwsContextPtr{sws_getContext(
@@ -133,24 +123,16 @@ struct Reader::Implementation {
 		}
 	}
 
-	FramePool::ObjectPtr Grab(bool checkIFrame = false) {
+	bool Grab(bool checkIFrame = false) {
 		using namespace fort::video::details;
-		FramePool::ObjectPtr res = nullptr;
-		if (!d_queue.empty()) {
-			res = std::move(const_cast<FramePool::ObjectPtr &>(d_queue.top()));
-			d_queue.pop();
-			return res;
-		}
-		if (!d_packet) {
-			return nullptr;
-		}
-
-		int error = av_read_frame(d_context.get(), d_packet.get());
-		if (error < 0) {
-			if (error != AVERROR_EOF) {
-				throw AVError(error, av_read_frame);
-			} else {
-				d_packet.reset();
+		if (d_packet) {
+			int error = av_read_frame(d_context.get(), d_packet.get());
+			if (error < 0) {
+				if (error != AVERROR_EOF) {
+					throw AVError(error, av_read_frame);
+				} else {
+					d_packet.reset();
+				}
 			}
 		}
 
@@ -160,74 +142,73 @@ struct Reader::Implementation {
 			}
 		};
 
+		if (d_queued == true) {
+			av_frame_unref(d_frame.get());
+		}
+
 		AVCall(avcodec_send_packet, d_codec.get(), d_packet.get());
 
-		while (true) {
-			int error = avcodec_receive_frame(d_codec.get(), d_frame.get());
-			if (error == AVERROR(EAGAIN) || error == AVERROR_EOF) {
-				break;
-			} else if (error < 0) {
-				throw AVError(error, avcodec_receive_frame);
-			}
+		int error = avcodec_receive_frame(d_codec.get(), d_frame.get());
+		if (error == AVERROR(EAGAIN)) {
+			return Grab(checkIFrame);
+		} else if (error == AVERROR_EOF) {
+			return false;
+		} else if (error < 0) {
+			throw AVError(error, avcodec_receive_frame);
+		}
 
-			defer {
-				av_frame_unref(d_frame.get());
-			};
-
-			if (checkIFrame && d_frame->pict_type != AV_PICTURE_TYPE_I) {
-				throw cpptrace::runtime_error(
-				    std::string("Only I-Frame requested, but received a ") +
-				    av_get_picture_type_char(d_frame->pict_type)
-				);
-			}
-
-			auto newFrame = d_imagePool->Get();
-
-			if (d_scaleContext) {
-				AVCall(
-				    sws_scale,
-				    d_scaleContext.get(),
-				    d_frame->data,
-				    d_frame->linesize,
-				    0,
-				    d_codec->height,
-				    newFrame->Planes,
-				    newFrame->Linesize
-				);
-			} else {
-				av_image_copy(
-				    newFrame->Planes,
-				    newFrame->Linesize,
-				    const_cast<const uint8_t **>(d_frame->data),
-				    d_frame->linesize,
-				    d_format,
-				    d_codec->width,
-				    d_codec->height
-				);
-			}
-
-			newFrame->PTS   = video::Duration(av_rescale_q(
-                d_frame->pts,
-                Stream()->time_base,
-                {1, int64_t(1e9)}
-            ));
-			newFrame->Index = av_rescale_q(
-			    d_frame->pts,
-			    Stream()->time_base,
-			    {Stream()->avg_frame_rate.den, Stream()->avg_frame_rate.num}
+		if (checkIFrame && d_frame->pict_type != AV_PICTURE_TYPE_I) {
+			throw cpptrace::runtime_error(
+			    std::string("Only I-Frame requested, but received a ") +
+			    av_get_picture_type_char(d_frame->pict_type)
 			);
-			d_next = newFrame->Index + 1;
-
-			d_queue.push(std::move(newFrame));
 		}
 
-		if (!d_queue.empty()) {
-			res = std::move(const_cast<FramePool::ObjectPtr &>(d_queue.top()));
-			d_queue.pop();
-			return res;
+		return true;
+	}
+
+	bool Receive(Frame &frame) {
+		if (d_queued == false) {
+			return false;
+		}
+		defer {
+			d_queued = false;
+			av_frame_unref(d_frame.get());
+		};
+
+		if (frame.Format != d_format || frame.Size != d_size) {
+			throw cpptrace::invalid_argument{
+			    "invalid frame format " + std::to_string(frame.Format) + " " +
+			    std::to_string(frame.Size)};
 		}
 
-		return Grab(checkIFrame);
+		if (d_scaleContext) {
+			details::AVCall(
+			    sws_scale,
+			    d_scaleContext.get(),
+			    d_frame->data,
+			    d_frame->linesize,
+			    0,
+			    d_codec->height,
+			    frame.Planes,
+			    frame.Linesize
+			);
+
+		} else {
+			av_image_copy(
+			    frame.Planes,
+			    frame.Linesize,
+			    const_cast<const uint8_t **>(d_frame->data),
+			    d_frame->linesize,
+			    d_format,
+			    d_codec->width,
+			    d_codec->height
+			);
+		}
+		frame.PTS   = FramePTS(*d_frame);
+		frame.Index = FrameIndex(*d_frame);
+		d_next      = frame.Index + 1;
+		return true;
 	}
 
 	AVStream *Stream() const noexcept {
@@ -247,9 +228,9 @@ struct Reader::Implementation {
 	}
 
 	void seek(
-	    int64_t                              position,
-	    int                                  flags,
-	    std::function<bool(const Frame &)> &&predicate
+	    int64_t                                                        position,
+	    int                                                            flags,
+	    std::function<bool(const Implementation &, const AVFrame &)> &&predicate
 	) {
 		details::AVCall(
 		    avformat_seek_file,
@@ -267,26 +248,38 @@ struct Reader::Implementation {
 			d_packet = details::AVPacketPtr{av_packet_alloc()};
 		}
 
-		FramePool::ObjectPtr frame;
-
 		bool checkIFrame = true;
+		bool res         = false;
 		do {
-			frame       = Grab(checkIFrame);
+			res         = Grab(checkIFrame);
 			checkIFrame = false;
-		} while (frame && predicate(*frame));
-		while (!d_queue.empty()) {
-			d_queue.pop();
-		}
-		if (frame) {
-			d_queue.push(std::move(frame));
-		}
+		} while (res && predicate(*this, *d_frame));
+		d_queued = res;
 	}
 
 	size_t Position() const noexcept {
-		if (!d_queue.empty()) {
-			return d_queue.top()->Index;
+		if (d_queued == true) {
+			return av_rescale_q(
+			    d_frame->pts,
+			    Stream()->time_base,
+			    {Stream()->avg_frame_rate.den, Stream()->avg_frame_rate.num}
+			);
 		}
 		return d_next;
+	}
+
+	size_t FrameIndex(const AVFrame &frame) const noexcept {
+		return av_rescale_q(
+		    frame.pts,
+		    Stream()->time_base,
+		    {Stream()->avg_frame_rate.den, Stream()->avg_frame_rate.num}
+		);
+	}
+
+	video::Duration FramePTS(const AVFrame &frame) const noexcept {
+		return video::Duration(
+		    av_rescale_q(d_frame->pts, Stream()->time_base, {1, int64_t(1e9)})
+		);
 	}
 };
 
@@ -328,25 +321,47 @@ size_t Reader::Length() const noexcept {
 	return self->Stream()->nb_frames;
 }
 
-std::unique_ptr<Frame, std::function<void(Frame *)>> Reader::Grab() {
+bool Reader::Read(Frame &frame) {
+	if (!Grab()) {
+		return false;
+	}
+	return Receive(frame);
+}
+
+bool Reader::Grab() {
 	return self->Grab();
 }
 
+bool Reader::Receive(Frame &frame) {
+	return self->Receive(frame);
+}
+
 void Reader::SeekFrame(size_t position) {
-	self->seek(position, AVSEEK_FLAG_FRAME, [position](const Frame &f) {
-		return f.Index < position;
-	});
+	self->seek(
+	    position,
+	    AVSEEK_FLAG_FRAME,
+	    [position](const Implementation &self, const AVFrame &f) {
+		    return self.FrameIndex(f) < position;
+	    }
+	);
 }
 
 void Reader::SeekTime(video::Duration duration) {
-	self->seek(duration.count(), 0, [pts = duration.count()](const Frame &f) {
-		return f.PTS.count() < pts;
-	});
+	self->seek(
+	    duration.count(),
+	    0,
+	    [pts = duration.count()](const Implementation &self, const AVFrame &f) {
+		    return self.FramePTS(f).count() < pts;
+	    }
+	);
 }
 
 size_t Reader::Position() const noexcept {
 	return self->Position();
 }
 
+std::unique_ptr<video::Frame> Reader::CreateFrame() const {
+	return std::make_unique<video::Frame>(self->d_size, self->d_format, 32);
+}
 } // namespace video
 } // namespace fort

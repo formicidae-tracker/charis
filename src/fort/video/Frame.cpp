@@ -24,6 +24,21 @@ Frame::Frame(int width, int height, PixelFormat format, int alignement)
 	);
 }
 
+Frame::Frame(const Resolution &size, PixelFormat format, int alignement)
+    : Format{format}
+    , Size{size} {
+
+	details::AVCall(
+	    av_image_alloc,
+	    Planes,
+	    Linesize,
+	    size.Width,
+	    size.Height,
+	    format,
+	    alignement
+	);
+}
+
 Frame::~Frame() {
 	av_freep(Planes);
 }

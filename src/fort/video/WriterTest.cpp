@@ -105,11 +105,10 @@ TEST_F(WriterTest, CanEncodeGray8) {
 
 	Reader r{path};
 	EXPECT_EQ(r.Size(), std::make_tuple(40, 30));
-
+	auto f = r.CreateFrame();
 	for (size_t i = 0; i < 255; i++) {
 		SCOPED_TRACE(std::to_string(i));
-		auto f = r.Grab();
-		EXPECT_TRUE(f);
+		EXPECT_TRUE(r.Read(*f));
 		if (f) {
 			EXPECT_NEAR(f->Planes[0][0], i, 1);
 		}
@@ -153,11 +152,11 @@ TEST_F(WriterTest, CanEncodeYUV) {
 
 	Reader r{path, AV_PIX_FMT_YUV420P};
 	ASSERT_EQ(r.Size(), std::make_tuple(WIDTH, HEIGHT));
-
+	auto f = r.CreateFrame();
 	for (int i = 0; i < 255; i++) {
 		SCOPED_TRACE(std::to_string(i));
-		auto f = r.Grab();
-		EXPECT_TRUE(f);
+
+		EXPECT_TRUE(r.Read(*f));
 		if (f) {
 			EXPECT_NEAR(f->Planes[0][0], Frames[i][0], 1);
 		}

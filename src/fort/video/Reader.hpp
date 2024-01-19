@@ -11,8 +11,6 @@ namespace video {
 
 class Reader {
 public:
-	using FramePtr = std::unique_ptr<Frame, std::function<void(Frame *)>>;
-
 	Reader(
 	    const std::filesystem::path &path,
 	    PixelFormat                     = AV_PIX_FMT_GRAY8,
@@ -35,7 +33,13 @@ public:
 
 	void SeekTime(video::Duration duration);
 
-	FramePtr Grab();
+	bool Grab();
+
+	bool Receive(Frame &frame);
+
+	bool Read(Frame &frame);
+
+	std::unique_ptr<video::Frame> CreateFrame() const;
 
 private:
 	struct Implementation;

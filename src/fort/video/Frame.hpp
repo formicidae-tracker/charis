@@ -9,19 +9,22 @@ namespace fort {
 namespace video {
 
 struct Frame {
-	Frame(int width, int height, PixelFormat format, int alignement = 16);
+	Frame(int width, int height, PixelFormat format, int alignement = 32);
+	Frame(
+	    const Resolution &resolution, PixelFormat format, int alignement = 32
+	);
 
 	~Frame();
 
 	Frame(const Frame &other)            = delete;
 	Frame &operator=(const Frame &other) = delete;
 
-	uint8_t	         *Planes[4];
-	int                  Linesize[4];
-	PixelFormat          Format;
-	size_t               Index;
-	Duration             PTS;
-	std::tuple<int, int> Size;
+	uint8_t    *Planes[4];
+	int         Linesize[4];
+	PixelFormat Format;
+	size_t      Index;
+	Duration    PTS;
+	Resolution  Size;
 };
 
 } // namespace video

@@ -25,5 +25,18 @@ struct Ratio {
 	T Den;
 };
 
+struct Resolution {
+	int Width;
+	int Height;
+
+	inline bool operator==(const Resolution &other) const noexcept {
+		return Width == other.Width && Height == other.Height;
+	}
+
+	inline bool operator!=(const Resolution &other) const noexcept {
+		return Width != other.Width || Height != other.Height;
+	}
+};
+
 } // namespace video
 } // namespace fort

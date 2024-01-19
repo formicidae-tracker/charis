@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fort/video/Frame.hpp>
 #include <fort/video/PNG.hpp>
+#include <fort/video/Types.hpp>
 #include <fstream>
 #include <gtest/gtest.h>
 #include <libavutil/log.h>
@@ -20,9 +21,10 @@ class PNGTest : public ::testing::Test {
 protected:
 	static std::filesystem::path TempDir;
 
-	constexpr static int WIDTH  = 32;
-	constexpr static int HEIGHT = 8;
-	constexpr static int SIZE   = WIDTH * HEIGHT;
+	constexpr static int                 WIDTH      = 32;
+	constexpr static int                 HEIGHT     = 8;
+	constexpr static int                 SIZE       = WIDTH * HEIGHT;
+	constexpr static Resolution          RESOLUTION = {WIDTH, HEIGHT};
 
 	static std::array<uint8_t, SIZE>     Gray;
 	static std::array<uint8_t, 3 * SIZE> RGB;
@@ -111,7 +113,7 @@ TEST_F(PNGTest, CanReadGrayImage) {
 
 	EXPECT_NO_THROW({ gray = ReadPNG(TempDir / "gray.png"); });
 
-	ASSERT_EQ(gray->Size, std::make_tuple(WIDTH, HEIGHT));
+	ASSERT_EQ(gray->Size, RESOLUTION);
 
 	for (int i = 0; i < SIZE; i++) {
 		SCOPED_TRACE(std::to_string(i));
@@ -124,7 +126,7 @@ TEST_F(PNGTest, CanReadRGBImage) {
 
 	EXPECT_NO_THROW({ rgb = ReadPNG(TempDir / "rgb.png", AV_PIX_FMT_RGB24); });
 
-	ASSERT_EQ(rgb->Size, std::make_tuple(WIDTH, HEIGHT));
+	ASSERT_EQ(rgb->Size, RESOLUTION);
 	ASSERT_EQ(rgb->Format, AV_PIX_FMT_RGB24);
 
 	for (int i = 0; i < SIZE; i++) {
@@ -148,7 +150,7 @@ TEST_F(PNGTest, CanWriteGrayImage) {
 	std::unique_ptr<video::Frame> res;
 	EXPECT_NO_THROW({ res = ReadPNG(path); });
 	ASSERT_EQ(res->Format, AV_PIX_FMT_GRAY8);
-	ASSERT_EQ(res->Size, std::make_tuple(WIDTH, HEIGHT));
+	ASSERT_EQ(res->Size, RESOLUTION);
 	for (int i = 0; i < SIZE; i++) {
 		SCOPED_TRACE(std::to_string(i));
 		EXPECT_EQ(res->Planes[0][i], Gray[i]);
@@ -166,7 +168,7 @@ TEST_F(PNGTest, CanWriteRGBImage) {
 	std::unique_ptr<video::Frame> res;
 	EXPECT_NO_THROW({ res = ReadPNG(path, AV_PIX_FMT_RGB24); });
 	ASSERT_EQ(res->Format, AV_PIX_FMT_RGB24);
-	ASSERT_EQ(res->Size, std::make_tuple(WIDTH, HEIGHT));
+	ASSERT_EQ(res->Size, RESOLUTION);
 
 	for (int i = 0; i < SIZE; i++) {
 		SCOPED_TRACE(std::to_string(i));

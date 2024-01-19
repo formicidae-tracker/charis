@@ -75,12 +75,12 @@ TEST_F(ReaderTest, CanGetBaseInformations) {
 
 TEST_F(ReaderTest, CanGrabAllFrames) {
 	Reader r{TempDir / "video.mp4"};
-
+	auto   frame = r.CreateFrame();
 	for (size_t i = 0; i < 255; i++) {
 		SCOPED_TRACE("frame: " + std::to_string(i));
 		EXPECT_EQ(r.Position(), i);
 		EXPECT_NO_THROW({
-			auto frame = r.Grab();
+			EXPECT_TRUE(r.Read(*frame));
 			EXPECT_EQ(frame->Index, i);
 			EXPECT_NEAR(frame->PTS.count(), int64_t(i * 1e9) / 24, 1);
 			EXPECT_NEAR(frame->Planes[0][0], i, 1);
@@ -96,8 +96,8 @@ TEST_F(ReaderTest, CanSeekForward) {
 
 	EXPECT_NO_THROW({ r.SeekFrame(127); });
 	EXPECT_EQ(r.Position(), 127);
-	auto frame = r.Grab();
-	ASSERT_TRUE(frame);
+	auto frame = r.CreateFrame();
+	ASSERT_TRUE(r.Read(*frame));
 	EXPECT_EQ(frame->Index, 127);
 	EXPECT_EQ(frame->Planes[0][0], 127);
 	EXPECT_EQ(frame->Planes[0][1], 127);
@@ -113,8 +113,8 @@ TEST_F(ReaderTest, CanSeekBackward) {
 
 	EXPECT_NO_THROW({ r.SeekFrame(64); });
 	EXPECT_EQ(r.Position(), 64);
-	auto frame = r.Grab();
-	ASSERT_TRUE(frame);
+	auto frame = r.CreateFrame();
+	ASSERT_TRUE(r.Read(*frame));
 	EXPECT_EQ(frame->Index, 64);
 	EXPECT_EQ(frame->Planes[0][0], 64);
 	EXPECT_EQ(frame->Planes[0][1], 64);
@@ -131,8 +131,8 @@ TEST_F(ReaderTest, CanSeekBackwardAfterReachingEnd) {
 
 	EXPECT_NO_THROW({ r.SeekFrame(64); });
 	EXPECT_EQ(r.Position(), 64);
-	auto frame = r.Grab();
-	ASSERT_TRUE(frame);
+	auto frame = r.CreateFrame();
+	ASSERT_TRUE(r.Read(*frame));
 	EXPECT_EQ(frame->Index, 64);
 	EXPECT_EQ(frame->Planes[0][0], 64);
 	EXPECT_EQ(frame->Planes[0][1], 64);
