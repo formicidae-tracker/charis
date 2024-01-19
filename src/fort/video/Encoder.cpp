@@ -49,8 +49,8 @@ struct Encoder::Implementation {
 		}
 
 		d_codec            = MakeAVCodecContext(enc);
-		d_codec->width     = std::get<0>(params.Size);
-		d_codec->height    = std::get<1>(params.Size);
+		d_codec->width     = params.Size.Width;
+		d_codec->height    = params.Size.Height;
 		d_codec->time_base = {params.Framerate.Den, params.Framerate.Num};
 		d_codec->pix_fmt   = AV_PIX_FMT_YUV420P;
 		d_codec->bit_rate  = params.BitRate;
@@ -106,14 +106,12 @@ struct Encoder::Implementation {
 	void Send(const Frame &f, int64_t pts) {
 		if (f.Format != d_expectedFormat ||
 		    f.Size != Resolution{d_frame->width, d_frame->height}) {
-			char current[200], expected[200];
-			av_get_pix_fmt_string(current, 200, f.Format);
-			av_get_pix_fmt_string(expected, 200, d_expectedFormat);
 
 			throw std::invalid_argument{
-			    std::string{"invalid input frame {format: "} + current +
-			    ", size: " + std::to_string(f.Size) +
-			    "}, expected {format: " + expected + ", size: " +
+			    std::string{"invalid input frame {format: "} +
+			    std::to_string(f.Format) + ", size: " + std::to_string(f.Size) +
+			    "}, expected {format: " + std::to_string(d_expectedFormat) +
+			    ", size: " +
 			    std::to_string(Resolution{d_frame->width, d_frame->height})};
 		}
 

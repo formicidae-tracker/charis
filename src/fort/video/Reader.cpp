@@ -132,6 +132,7 @@ struct Reader::Implementation {
 					throw AVError(error, av_read_frame);
 				} else {
 					d_packet.reset();
+					AVCall(avcodec_send_packet, d_codec.get(), nullptr);
 				}
 			}
 		}
@@ -144,9 +145,12 @@ struct Reader::Implementation {
 
 		if (d_queued == true) {
 			av_frame_unref(d_frame.get());
+			d_queued = false;
 		}
 
-		AVCall(avcodec_send_packet, d_codec.get(), d_packet.get());
+		if (d_packet) {
+			AVCall(avcodec_send_packet, d_codec.get(), d_packet.get());
+		}
 
 		int error = avcodec_receive_frame(d_codec.get(), d_frame.get());
 		if (error == AVERROR(EAGAIN)) {
@@ -163,7 +167,7 @@ struct Reader::Implementation {
 			    av_get_picture_type_char(d_frame->pict_type)
 			);
 		}
-
+		d_queued = true;
 		return true;
 	}
 
@@ -292,9 +296,9 @@ Reader::Reader(
 
 Reader::~Reader() = default;
 
-std::tuple<int, int> Reader::Size() const noexcept {
+Resolution Reader::Size() const noexcept {
 	const auto codecpar = self->Stream()->codecpar;
-	return {codecpar->width, codecpar->height};
+	return Resolution{codecpar->width, codecpar->height};
 }
 
 Duration Reader::Duration() const noexcept {
@@ -322,9 +326,16 @@ size_t Reader::Length() const noexcept {
 }
 
 bool Reader::Read(Frame &frame) {
+	// Frame already grabbed, just receive it.
+	if (self->d_queued) {
+		return Receive(frame);
+	}
+
+	// try to grab it.
 	if (!Grab()) {
 		return false;
 	}
+	// receive it.
 	return Receive(frame);
 }
 

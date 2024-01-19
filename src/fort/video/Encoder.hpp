@@ -12,10 +12,10 @@ namespace video {
 class Encoder {
 public:
 	struct Params {
-		std::tuple<int, int> Size;
-		std::string          Codec   = "libx264";
-		std::string          ParamID = "x264-params";
-		std::string ParamKeyValues   = "keyint=60:min-keyint=60:scenecut=0";
+		Resolution  Size;
+		std::string Codec          = "libx264";
+		std::string ParamID        = "x264-params";
+		std::string ParamKeyValues = "keyint=60:min-keyint=60:scenecut=0";
 		Ratio<int>  Framerate;
 		PixelFormat Format = AV_PIX_FMT_YUV420P;
 

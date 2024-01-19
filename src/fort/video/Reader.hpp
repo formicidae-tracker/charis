@@ -19,7 +19,7 @@ public:
 
 	~Reader();
 
-	std::tuple<int, int> Size() const noexcept;
+	Resolution Size() const noexcept;
 
 	video::Duration Duration() const noexcept;
 

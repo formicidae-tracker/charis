@@ -20,6 +20,7 @@ protected:
 	static std::filesystem::path TempDir;
 	constexpr static int         WIDTH              = 40;
 	constexpr static int         HEIGHT             = 30;
+	constexpr static Resolution  RESOLUTION         = {WIDTH, HEIGHT};
 	constexpr static int         FULL_PLANE_SIZE    = WIDTH * HEIGHT;
 	constexpr static int         QUARTER_PLANE_SIZE = (WIDTH * HEIGHT) / 4;
 	constexpr static int IMAGE_SIZE = FULL_PLANE_SIZE + 2 * QUARTER_PLANE_SIZE;
@@ -104,7 +105,7 @@ TEST_F(WriterTest, CanEncodeGray8) {
 	}
 
 	Reader r{path};
-	EXPECT_EQ(r.Size(), std::make_tuple(40, 30));
+	EXPECT_EQ(r.Size(), RESOLUTION);
 	auto f = r.CreateFrame();
 	for (size_t i = 0; i < 255; i++) {
 		SCOPED_TRACE(std::to_string(i));
@@ -151,7 +152,7 @@ TEST_F(WriterTest, CanEncodeYUV) {
 	}
 
 	Reader r{path, AV_PIX_FMT_YUV420P};
-	ASSERT_EQ(r.Size(), std::make_tuple(WIDTH, HEIGHT));
+	ASSERT_EQ(r.Size(), RESOLUTION);
 	auto f = r.CreateFrame();
 	for (int i = 0; i < 255; i++) {
 		SCOPED_TRACE(std::to_string(i));

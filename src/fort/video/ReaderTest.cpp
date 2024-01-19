@@ -22,8 +22,10 @@ namespace video {
 class ReaderTest : public ::testing::Test {
 protected:
 	static std::filesystem::path TempDir;
-	constexpr static int         WIDTH  = 40;
-	constexpr static int         HEIGHT = 30;
+	constexpr static int         WIDTH      = 40;
+	constexpr static int         HEIGHT     = 30;
+	constexpr static Resolution  RESOLUTION = {WIDTH, HEIGHT};
+	constexpr static int         LENGTH     = 255;
 
 	static void SetUpTestSuite() {
 		std::string tmpDirtemplate = std::filesystem::temp_directory_path() /
@@ -37,7 +39,7 @@ protected:
 			if (!file) {
 				throw std::runtime_error("could not open rawvideo file");
 			}
-			for (int i = 0; i < 255; i++) {
+			for (int i = 0; i < LENGTH; i++) {
 				memset(&frame[0], i, 3 * WIDTH * HEIGHT);
 				file.write((const char *)(&frame[0]), 3 * WIDTH * HEIGHT);
 			}
@@ -66,10 +68,10 @@ std::filesystem::path ReaderTest::TempDir;
 
 TEST_F(ReaderTest, CanGetBaseInformations) {
 	Reader r{TempDir / "video.mp4"};
-	EXPECT_EQ(r.Length(), 255);
-	EXPECT_EQ(r.Duration(), Duration(int64_t(255e9) / 24));
+	EXPECT_EQ(r.Length(), LENGTH);
+	EXPECT_EQ(r.Duration().count(), int64_t(LENGTH * 1e9) / 24);
 	EXPECT_NEAR(r.AverageFrameDuration().count(), int64_t(1e9) / 24, 1);
-	EXPECT_EQ(r.Size(), std::make_tuple(ReaderTest::WIDTH, ReaderTest::HEIGHT));
+	EXPECT_EQ(r.Size(), RESOLUTION);
 	EXPECT_EQ(r.Position(), 0);
 }
 
@@ -79,14 +81,12 @@ TEST_F(ReaderTest, CanGrabAllFrames) {
 	for (size_t i = 0; i < 255; i++) {
 		SCOPED_TRACE("frame: " + std::to_string(i));
 		EXPECT_EQ(r.Position(), i);
-		EXPECT_NO_THROW({
-			EXPECT_TRUE(r.Read(*frame));
-			EXPECT_EQ(frame->Index, i);
-			EXPECT_NEAR(frame->PTS.count(), int64_t(i * 1e9) / 24, 1);
-			EXPECT_NEAR(frame->Planes[0][0], i, 1);
-			EXPECT_NEAR(frame->Planes[0][1], i, 1);
-			EXPECT_NEAR(frame->Planes[0][2], i, 1);
-		});
+		EXPECT_NO_THROW({ EXPECT_TRUE(r.Read(*frame)); });
+		EXPECT_EQ(frame->Index, i);
+		EXPECT_NEAR(frame->PTS.count(), int64_t(i * 1e9) / 24, 1);
+		EXPECT_NEAR(frame->Planes[0][0], i, 1);
+		EXPECT_NEAR(frame->Planes[0][1], i, 1);
+		EXPECT_NEAR(frame->Planes[0][2], i, 1);
 	}
 	EXPECT_EQ(r.Position(), r.Length());
 }
@@ -137,6 +137,25 @@ TEST_F(ReaderTest, CanSeekBackwardAfterReachingEnd) {
 	EXPECT_EQ(frame->Planes[0][0], 64);
 	EXPECT_EQ(frame->Planes[0][1], 64);
 	EXPECT_EQ(frame->Planes[0][2], 64);
+}
+
+TEST_F(ReaderTest, CanReadOneEveryTwo) {
+	Reader r{TempDir / "video.mp4"};
+
+	auto frame = r.CreateFrame();
+	for (size_t i = 0; i < 255; i++) {
+		SCOPED_TRACE(std::to_string(i));
+		if (i % 2 == 0) {
+			EXPECT_TRUE(r.Grab());
+		} else {
+			EXPECT_EQ(r.Position(), i - 1);
+			EXPECT_TRUE(r.Grab());
+			EXPECT_EQ(r.Position(), i);
+			EXPECT_TRUE(r.Read(*frame));
+			EXPECT_EQ(frame->Index, i);
+			EXPECT_NEAR(frame->Planes[0][0], i, 1);
+		}
+	}
 }
 
 } // namespace video
