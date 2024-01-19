@@ -371,8 +371,12 @@ size_t Reader::Position() const noexcept {
 	return self->Position();
 }
 
-std::unique_ptr<video::Frame> Reader::CreateFrame() const {
-	return std::make_unique<video::Frame>(self->d_size, self->d_format, 32);
+std::unique_ptr<video::Frame> Reader::CreateFrame(int alignement) const {
+	return std::make_unique<video::Frame>(
+	    self->d_size,
+	    self->d_format,
+	    alignement
+	);
 }
 } // namespace video
 } // namespace fort

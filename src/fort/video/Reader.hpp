@@ -39,7 +39,7 @@ public:
 
 	bool Read(Frame &frame);
 
-	std::unique_ptr<video::Frame> CreateFrame() const;
+	std::unique_ptr<video::Frame> CreateFrame(int alignement = 32) const;
 
 private:
 	struct Implementation;
