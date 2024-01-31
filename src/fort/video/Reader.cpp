@@ -1,4 +1,5 @@
 #include "Reader.hpp"
+#include <cstddef>
 #include <google/protobuf/descriptor.h>
 #include <memory>
 
@@ -229,19 +230,13 @@ struct Reader::Implementation {
 		return ctx;
 	}
 
-	void seek(
-	    int64_t                                                        position,
-	    int                                                            flags,
-	    std::function<bool(const Implementation &, const AVFrame &)> &&predicate
-	) {
+	bool seek(int64_t pts) {
 		details::AVCall(
-		    avformat_seek_file,
+		    av_seek_frame,
 		    d_context.get(),
 		    d_index,
-		    0, // std::numeric_limits<int64_t>::min(),
-		    position,
-		    position,
-		    flags | AVSEEK_FLAG_BACKWARD
+		    pts,
+		    AVSEEK_FLAG_BACKWARD
 		);
 
 		avcodec_flush_buffers(d_codec.get());
@@ -250,13 +245,7 @@ struct Reader::Implementation {
 			d_packet = details::AVPacketPtr{av_packet_alloc()};
 		}
 
-		bool checkIFrame = true;
-		bool res         = false;
-		do {
-			res         = Grab(checkIFrame);
-			checkIFrame = false;
-		} while (res && predicate(*this, *d_frame));
-		d_queued = res;
+		return Grab(true);
 	}
 
 	size_t Position() const noexcept {
@@ -268,6 +257,18 @@ struct Reader::Implementation {
 			);
 		}
 		return d_next;
+	}
+
+	int64_t streamPTS() const noexcept {
+		if (d_queued == true) {
+			return d_frame->pts;
+		}
+
+		return av_rescale_q(
+		    d_next,
+		    {Stream()->avg_frame_rate.den, Stream()->avg_frame_rate.num},
+		    Stream()->time_base
+		);
 	}
 
 	size_t FrameIndex(const AVFrame &frame) const noexcept {
@@ -343,24 +344,39 @@ bool Reader::Receive(Frame &frame) {
 	return self->Receive(frame);
 }
 
-void Reader::SeekFrame(size_t position) {
-	self->seek(
+size_t Reader::SeekFrame(size_t position, bool advance) {
+	self->seek(av_rescale_q(
 	    position,
-	    AVSEEK_FLAG_FRAME,
-	    [position](const Implementation &self, const AVFrame &f) {
-		    return self.FrameIndex(f) < position;
-	    }
-	);
+	    {self->Stream()->avg_frame_rate.den,
+	     self->Stream()->avg_frame_rate.num},
+	    self->Stream()->time_base
+	));
+
+	do {
+		// std::cerr << "stream is at position " << self->Position() <<
+		// std::endl;
+	} while (advance && self->Position() < position && self->Grab());
+	return self->Position();
 }
 
-void Reader::SeekTime(video::Duration duration) {
-	self->seek(
+video::Duration Reader::SeekTime(video::Duration duration, bool advance) {
+	int64_t pts = av_rescale_q(
 	    duration.count(),
-	    0,
-	    [pts = duration.count()](const Implementation &self, const AVFrame &f) {
-		    return self.FramePTS(f).count() < pts;
-	    }
+	    {1, int64_t(1e9)},
+	    self->Stream()->time_base
 	);
+	self->seek(pts);
+
+	do {
+		// std::cerr << "stream is at position " << self->Position() <<
+		// std::endl;
+	} while (advance && self->streamPTS() < pts && self->Grab());
+
+	return video::Duration{av_rescale_q(
+	    self->streamPTS(),
+	    self->Stream()->time_base,
+	    {1, int64_t(1e9)}
+	)};
 }
 
 size_t Reader::Position() const noexcept {

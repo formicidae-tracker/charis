@@ -29,9 +29,9 @@ public:
 
 	video::Duration AverageFrameDuration() const noexcept;
 
-	void SeekFrame(size_t position);
+	size_t SeekFrame(size_t position, bool advance = true);
 
-	void SeekTime(video::Duration duration);
+	video::Duration SeekTime(video::Duration duration, bool advance = true);
 
 	bool Grab();
 

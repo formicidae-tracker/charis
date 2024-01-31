@@ -104,6 +104,13 @@ TEST_F(ReaderTest, CanSeekForward) {
 	EXPECT_EQ(frame->Planes[0][2], 127);
 }
 
+TEST_F(ReaderTest, CanEfficientlySeekForward) {
+	Reader r{TempDir / "video.mp4"};
+
+	EXPECT_NO_THROW({ r.SeekFrame(127, false); });
+	EXPECT_GT(r.Position(), 100);
+}
+
 TEST_F(ReaderTest, CanSeekBackward) {
 	Reader r{TempDir / "video.mp4"};
 
@@ -137,6 +144,16 @@ TEST_F(ReaderTest, CanSeekBackwardAfterReachingEnd) {
 	EXPECT_EQ(frame->Planes[0][0], 64);
 	EXPECT_EQ(frame->Planes[0][1], 64);
 	EXPECT_EQ(frame->Planes[0][2], 64);
+}
+
+TEST_F(ReaderTest, CanEfficientlySeekBackward) {
+	Reader r{TempDir / "video.mp4"};
+	for (size_t i = 0; i < 255; i++) {
+		r.Grab();
+	}
+
+	EXPECT_NO_THROW({ r.SeekFrame(64, false); });
+	EXPECT_GT(r.Position(), 30);
 }
 
 TEST_F(ReaderTest, CanReadOneEveryTwo) {
