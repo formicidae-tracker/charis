@@ -120,6 +120,11 @@ public:
 	}
 
 	/**
+	 * Truncate a Duration to a precision
+	 */
+	Duration Truncate(Duration precision) const;
+
+	/**
 	 *  Parses a string to a Duration
 	 *
 	 * @param d the string to Parse in the form  `"2h"` or `"1m"`

@@ -70,6 +70,13 @@ double Duration::Microseconds() const {
 	return double(d_nanoseconds) / double(1.0e3);
 }
 
+Duration Duration::Truncate(Duration precision) const {
+	if (precision.d_nanoseconds < 2) {
+		return *this;
+	}
+	return d_nanoseconds - (d_nanoseconds % precision.d_nanoseconds);
+}
+
 Duration Duration::Parse(const std::string &i) {
 	uint64_t integer(0);
 	double   frac(0);
