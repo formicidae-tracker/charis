@@ -66,3 +66,9 @@ if(FORT_CHARIS_BUILD_VIDEO)
 	add_subdirectory(video)
 
 endif(FORT_CHARIS_BUILD_VIDEO)
+
+if(FORT_CHARIS_BUILD_OPTIONS)
+
+	add_subdirectory(options)
+
+endif(FORT_CHARIS_BUILD_OPTIONS)

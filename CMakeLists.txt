@@ -20,6 +20,7 @@ option(FORT_CHARIS_BUILD_TIME "Builds libfort-time library" On)
 option(FORT_CHARIS_BUILD_GL "Builds libfort-gl library" On)
 option(FORT_CHARIS_BUILD_UTILS "Builds libfort-utils library" On)
 option(FORT_CHARIS_BUILD_VIDEO "Builds libfort-video library" On)
+option(FORT_CHARIS_BUILD_OPTIONS "Builds libfort-options library" On)
 
 include(FetchContent)
 
