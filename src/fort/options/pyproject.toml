@@ -25,6 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "libclang",
+	"ccsyspath"
 ]
 license = {file = "LICENSE"}
 
