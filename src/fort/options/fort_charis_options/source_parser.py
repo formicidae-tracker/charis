@@ -1,9 +1,9 @@
 import re
-from typing import Dict
-from clang import cindex
+import subprocess
 from dataclasses import dataclass
+from typing import Dict
 
-import ccsyspath
+from clang import cindex
 
 
 @dataclass
@@ -25,12 +25,18 @@ class CppSource:
     def BaseArgs():
         if len(CppSource._BaseArgs) > 0:
             return CppSource._BaseArgs
-        CppSource._BaseArgs = (
-            "-x c++ -std=c++11 -Wno-pragma-once-outside-header".split()
+        CppSource._BaseArgs = "-std=c++17 -Wno-pragma-once-outside-header".split()
+        out = subprocess.check_output(
+            "c++ -E -x c++ - -v".split(),
+            stdin=subprocess.DEVNULL,
+            stderr=subprocess.STDOUT,
         )
+
         CppSource._BaseArgs += [
-            "-I" + d.decode("utf-8") for d in ccsyspath.system_include_paths("clang++")
+            "-I" + d.group(0)[1:]
+            for d in re.finditer("^ /.*$", out.decode("utf-8"), re.MULTILINE)
         ]
+
         return CppSource._BaseArgs
 
     @staticmethod
