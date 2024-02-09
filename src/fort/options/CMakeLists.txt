@@ -8,10 +8,10 @@ add_custom_target(
 
 add_dependencies(check charis-options-pytests)
 
-set(SRC_FILES details/Optionable.cpp)
-set(HDR_FILES details/Optionable.hpp)
+set(SRC_FILES details/Traits.cpp details/Option.cpp)
+set(HDR_FILES details/Traits.hpp details/Option.cpp)
 
-set(TEST_SRC_FILES details/OptionableTest.cpp)
+set(TEST_SRC_FILES details/TraitsTest.cpp details/OptionTest.cpp)
 
 add_library(fort-charis::libfort-options INTERFACE IMPORTED GLOBAL)
 target_include_directories(

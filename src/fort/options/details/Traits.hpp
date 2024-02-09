@@ -40,6 +40,15 @@ template <> struct is_optionable<unsigned char> {
 template <typename T>
 inline constexpr bool is_optionable_v = is_optionable<T>::value;
 
+template <typename T, template <typename...> class Ref>
+struct is_specialization : std::false_type {};
+
+template <template <typename...> class Ref, typename... Args>
+struct is_specialization<Ref<Args...>, Ref> : std::true_type {};
+
+template <typename T, template <typename...> class Ref>
+inline constexpr bool is_specialization_v = is_specialization<T, Ref>::value;
+
 } // namespace details
 } // namespace options
 } // namespace fort
