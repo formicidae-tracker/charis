@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Traits.hpp"
-#include <memory>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -29,15 +28,13 @@ public:
 
 class OptionBase : private OptionData {
 public:
-	using Ptr = std::unique_ptr<OptionBase>;
-
-	OptionBase(OptionData && args)
+	OptionBase(OptionData &&args)
 	    : OptionData{std::move(args)} {}
 
 	virtual ~OptionBase() = default;
 
 	virtual void Parse(const std::optional<std::string> &) = 0;
-	virtual void Format(std::ostream &out) const   = 0;
+	virtual void Format(std::ostream &out) const           = 0;
 
 	inline const std::string &Name() const noexcept {
 		return OptionData::Name;
@@ -81,18 +78,17 @@ inline void OptionBase::Parse<std::string>(
 	res = value;
 }
 
-template <typename T> struct Args {
+struct OptionArgs {
 	char        ShortFlag;
 	std::string Name;
 	std::string Description;
-	T	      &Value;
 	bool        Required;
 };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class Option : public OptionBase {
 public:
-	Option(Args<T> &&args)
+	Option(OptionArgs &&args, T &value)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
@@ -100,7 +96,7 @@ public:
 	          .Required    = args.Required,
 	          .Repeatable  = false,
 	      }}
-	    , d_value{args.Value} {}
+	    , d_value{value} {}
 
 	void Parse(const std::optional<std::string> &value) override {
 		if (NumArgs() > 0 && !value.has_value()) {
@@ -119,7 +115,7 @@ private:
 
 template <> class Option<bool> : public OptionBase {
 public:
-	Option(Args<bool> &&args)
+	Option(OptionArgs &&args, bool &value)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
@@ -129,7 +125,7 @@ public:
 	          .Repeatable  = false,
 
 	      }}
-	    , d_value{args.Value} {
+	    , d_value{value} {
 		d_value = false;
 	}
 
@@ -163,6 +159,6 @@ private:
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class RepeatableOption : public OptionBase {};
 
-    } // namespace details
+} // namespace details
 } // namespace options
 } // namespace fort

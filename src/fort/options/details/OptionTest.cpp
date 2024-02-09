@@ -17,13 +17,15 @@ class OptionTest : public testing::Test {};
 
 TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 	bool value{true};
-	auto opt = Option<bool>({
-	    .ShortFlag   = 0,
-	    .Name        = "my-flag",
-	    .Description = "turn my flag on",
-	    .Value       = value,
-	    .Required    = true,
-	});
+	auto opt = Option<bool>(
+	    {
+	        .ShortFlag   = 0,
+	        .Name        = "my-flag",
+	        .Description = "turn my flag on",
+	        .Required    = true,
+	    },
+	    value
+	);
 	EXPECT_FALSE(value);
 	EXPECT_FALSE(opt.Required());
 	EXPECT_FALSE(opt.Repeatable());
@@ -32,13 +34,15 @@ TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 
 TEST_F(OptionTest, BoolParsing) {
 	bool value{false};
-	auto opt = Option<bool>({
-	    .ShortFlag   = 0,
-	    .Name        = "my-flag",
-	    .Description = "turn my flag on",
-	    .Value       = value,
-	    .Required    = true,
-	});
+	auto opt = Option<bool>(
+	    {
+	        .ShortFlag   = 0,
+	        .Name        = "my-flag",
+	        .Description = "turn my flag on",
+	        .Required    = true,
+	    },
+	    value
+	);
 	opt.Parse(std::nullopt);
 	EXPECT_TRUE(value);
 
@@ -58,12 +62,14 @@ TEST_F(OptionTest, BoolParsing) {
 
 TEST_F(OptionTest, IntParsing) {
 	int  value{25};
-	auto opt = Option<int>({
-	    .ShortFlag   = 0,
-	    .Name        = "my-flag",
-	    .Description = "turn my flag on",
-	    .Value       = value,
-	});
+	auto opt = Option<int>(
+	    {
+	        .ShortFlag   = 0,
+	        .Name        = "my-flag",
+	        .Description = "turn my flag on",
+	    },
+	    value
+	);
 	EXPECT_EQ(value, 25);
 	ASSERT_EQ(opt.NumArgs(), 1);
 
@@ -87,12 +93,14 @@ TEST_F(OptionTest, IntParsing) {
 
 TEST_F(OptionTest, FloatParsing) {
 	float value{1.0};
-	auto  opt = Option<float>({
-	     .ShortFlag   = 0,
-	     .Name        = "my-flag",
-	     .Description = "turn my flag on",
-	     .Value       = value,
-    });
+	auto  opt = Option<float>(
+        {
+	         .ShortFlag   = 0,
+	         .Name        = "my-flag",
+	         .Description = "turn my flag on",
+        },
+        value
+    );
 	EXPECT_FLOAT_EQ(value, 1.0);
 	ASSERT_EQ(opt.NumArgs(), 1);
 
@@ -119,12 +127,14 @@ TEST_F(OptionTest, FloatParsing) {
 
 TEST_F(OptionTest, StringParsing) {
 	std::string value{"something"};
-	auto        opt = Option<std::string>({
-	           .ShortFlag   = 0,
-	           .Name        = "my-flag",
-	           .Description = "turn my flag on",
-	           .Value       = value,
-    });
+	auto        opt = Option<std::string>(
+        {
+	               .ShortFlag   = 0,
+	               .Name        = "my-flag",
+	               .Description = "turn my flag on",
+        },
+        value
+    );
 	ASSERT_EQ(opt.NumArgs(), 1);
 	EXPECT_EQ(value, "something");
 
@@ -229,12 +239,14 @@ std::istream &operator>>(std::istream &in, Duration &value) {
 
 TEST_F(OptionTest, CustomParsing) {
 	Duration value{12345};
-	auto     opt = Option<Duration>({
-	        .ShortFlag   = 0,
-	        .Name        = "my-flag",
-	        .Description = "turn my flag on",
-	        .Value       = value,
-    });
+	auto     opt = Option<Duration>(
+        {
+	            .ShortFlag   = 0,
+	            .Name        = "my-flag",
+	            .Description = "turn my flag on",
+        },
+        value
+    );
 	ASSERT_EQ(opt.NumArgs(), 1);
 	EXPECT_EQ(value, Duration{12345});
 
