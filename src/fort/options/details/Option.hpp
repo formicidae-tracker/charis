@@ -1,12 +1,15 @@
 #pragma once
 
 #include "Traits.hpp"
+#include <ios>
 #include <optional>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
+
+#include <fort/utils/Defer.hpp>
 
 namespace fort {
 namespace options {
@@ -78,6 +81,17 @@ inline void OptionBase::Parse<std::string>(
 	res = value;
 }
 
+template <>
+inline void OptionBase::Parse<bool>(const std::string &value, bool &res) const {
+	if (value.empty() || value == "true") {
+		res = true;
+	} else if (value == "false") {
+		res = false;
+	} else {
+		throw ParseError{Name(), value};
+	}
+}
+
 struct OptionArgs {
 	char        ShortFlag;
 	std::string Name;
@@ -93,71 +107,74 @@ public:
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
-	          .Required    = args.Required,
+	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
+	          .Required    = std::is_same_v<T, bool> ? false : args.Required,
 	          .Repeatable  = false,
 	      }}
-	    , d_value{value} {}
+	    , d_value{value} {
+		if constexpr (std::is_same_v<T, bool>) {
+			d_value = false;
+		}
+	}
 
 	void Parse(const std::optional<std::string> &value) override {
-		if (NumArgs() > 0 && !value.has_value()) {
+		if (NumArgs() > 0 && value.has_value() == false) {
 			throw ParseError{Name(), ""};
 		}
 		OptionBase::Parse<T>(value.value_or(""), d_value);
 	}
 
 	void Format(std::ostream &out) const override {
-		out << d_value;
+		auto f = out.flags();
+		defer {
+			out.flags(f);
+		};
+		out << std::boolalpha << d_value;
 	}
 
 private:
 	T &d_value;
 };
 
-template <> class Option<bool> : public OptionBase {
+template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
+class RepeatableOption : public OptionBase {
 public:
-	Option(OptionArgs &&args, bool &value)
+	RepeatableOption(OptionArgs &&args, std::vector<T> &value)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
-	          .NumArgs     = 0,
-	          .Required    = false,
+	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
+	          .Required    = std::is_same_v<T, bool> ? false : args.Required,
 	          .Repeatable  = false,
-
 	      }}
-	    , d_value{value} {
-		d_value = false;
-	}
+	    , d_value{value} {}
 
 	void Parse(const std::optional<std::string> &value) override {
-		if (value.has_value() == false) {
-			d_value = true;
-			return;
+		if (NumArgs() > 0 && value.has_value() == false) {
+			throw ParseError{Name(), ""};
 		}
 
-		if (value.value() == "true") {
-			d_value = true;
-		} else if (value.value() == "false") {
-			d_value = false;
-		} else {
-			throw ParseError{Name(), value.value()};
-		}
+		OptionBase::Parse<T>(value.value_or(""), d_value.emplace_back());
 	}
 
 	void Format(std::ostream &out) const override {
-		if (d_value) {
-			out << "true";
-		} else {
-			out << "false";
+		auto f = out.flags();
+		defer {
+			out.flags(f);
+		};
+		std::string sep = "";
+		out << std::boolalpha << "[";
+		for (const auto &v : d_value) {
+			out << sep << v;
+			sep = ", ";
 		}
+		out << "]";
 	}
 
 private:
-	bool &d_value;
+	std::vector<T> &d_value;
 };
-
-template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
-class RepeatableOption : public OptionBase {};
 
 } // namespace details
 } // namespace options

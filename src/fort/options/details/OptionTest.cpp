@@ -7,6 +7,7 @@
 #include <ios>
 #include <ratio>
 #include <regex>
+#include <sstream>
 #include <string>
 
 namespace fort {
@@ -60,6 +61,25 @@ TEST_F(OptionTest, BoolParsing) {
 	}
 }
 
+TEST_F(OptionTest, BoolFormatting) {
+	bool value{false};
+	auto opt = Option<bool>(
+	    {
+	        .ShortFlag   = 0,
+	        .Name        = "my-flag",
+	        .Description = "turn my flag on",
+	        .Required    = true,
+	    },
+	    value
+	);
+	std::ostringstream out;
+	out << std::noboolalpha;
+	opt.Format(out);
+
+	EXPECT_EQ(out.str(), "false");
+	EXPECT_EQ(out.flags() & std::ios_base::boolalpha, 0);
+}
+
 TEST_F(OptionTest, IntParsing) {
 	int  value{25};
 	auto opt = Option<int>(
@@ -89,6 +109,22 @@ TEST_F(OptionTest, IntParsing) {
 	} catch (const std::exception &e) {
 		EXPECT_STREQ(e.what(), "could not parse my-flag=''");
 	}
+}
+
+TEST_F(OptionTest, IntFormatting) {
+	int  value{23};
+	auto opt = Option<int>(
+	    {
+	        .ShortFlag   = 0,
+	        .Name        = "my-flag",
+	        .Description = "turn my flag on",
+	        .Required    = true,
+	    },
+	    value
+	);
+	std::ostringstream out;
+	opt.Format(out);
+	EXPECT_EQ(out.str(), "23");
 }
 
 TEST_F(OptionTest, FloatParsing) {
@@ -125,6 +161,22 @@ TEST_F(OptionTest, FloatParsing) {
 	}
 }
 
+TEST_F(OptionTest, FloatFormatting) {
+	float value{23.0};
+	auto  opt = Option<float>(
+        {
+	         .ShortFlag   = 0,
+	         .Name        = "my-flag",
+	         .Description = "turn my flag on",
+	         .Required    = true,
+        },
+        value
+    );
+	std::ostringstream out;
+	opt.Format(out);
+	EXPECT_EQ(out.str(), "23");
+}
+
 TEST_F(OptionTest, StringParsing) {
 	std::string value{"something"};
 	auto        opt = Option<std::string>(
@@ -152,6 +204,22 @@ TEST_F(OptionTest, StringParsing) {
 	}
 }
 
+TEST_F(OptionTest, StringFormatting) {
+	std::string value{"The quick brown fox jumps over the lazy dog."};
+	auto        opt = Option<std::string>(
+        {
+	               .ShortFlag   = 0,
+	               .Name        = "my-flag",
+	               .Description = "turn my flag on",
+	               .Required    = true,
+        },
+        value
+    );
+	std::ostringstream out;
+	opt.Format(out);
+	EXPECT_EQ(out.str(), "The quick brown fox jumps over the lazy dog.");
+}
+
 using Duration = std::chrono::duration<int64_t, std::nano>;
 
 constexpr int64_t SECOND = 1000000000L;
@@ -166,15 +234,18 @@ std::ostream &operator<<(std::ostream &out, const Duration &d) {
 		return out << d.count() << "ns";
 	}
 	if (abs < 1000000L) {
-		return out << std::setprecision(3) << (d.count() / 1000.0) << "us";
+		return out << std::fixed << std::setprecision(3) << (d.count() / 1000.0)
+		           << "us";
 	}
 
 	if (abs < SECOND) {
-		return out << std::setprecision(3) << (d.count() / 1.0e6) << "ms";
+		return out << std::fixed << std::setprecision(3) << (d.count() / 1.0e6)
+		           << "ms";
 	}
 
 	if (abs < 60U * SECOND) {
-		return out << std::setprecision(3) << (d.count() / 1.0e9) << "s";
+		return out << std::fixed << std::setprecision(3) << (d.count() / 1.0e9)
+		           << "s";
 	}
 
 	Duration seconds = Duration{d.count() % (60L * SECOND)};
@@ -267,6 +338,85 @@ TEST_F(OptionTest, CustomParsing) {
 		ADD_FAILURE() << "should throw a runtime_error";
 	} catch (const std::exception &e) {
 		EXPECT_STREQ(e.what(), "could not parse my-flag=''");
+	}
+}
+
+TEST_F(OptionTest, CustomFomrating) {
+	Duration value{12340};
+	auto     opt = Option<Duration>(
+        {
+	            .ShortFlag   = 0,
+	            .Name        = "my-flag",
+	            .Description = "turn my flag on",
+        },
+        value
+    );
+	std::ostringstream out;
+	opt.Format(out);
+	EXPECT_EQ(out.str(), "12.340us");
+}
+
+TEST_F(OptionTest, RepeatableParsing) {
+	std::vector<Duration> value{
+	    std::chrono::hours{2},
+	};
+
+	auto opt = RepeatableOption<Duration>{
+	    {
+	        .Name = "my-flag",
+	    },
+	    value,
+	};
+
+	EXPECT_FALSE(value.empty());
+
+	opt.Parse("12us");
+	opt.Parse("40ms");
+	opt.Parse("2s");
+	ASSERT_EQ(value.size(), 4);
+	EXPECT_EQ(
+	    value[0],
+	    std::chrono::duration_cast<Duration>(std::chrono::hours{2})
+	);
+
+	EXPECT_EQ(
+	    value[1],
+	    std::chrono::duration_cast<Duration>(std::chrono::microseconds{12})
+	);
+	EXPECT_EQ(
+	    value[2],
+	    std::chrono::duration_cast<Duration>(std::chrono::milliseconds{40})
+	);
+	EXPECT_EQ(
+	    value[3],
+	    std::chrono::duration_cast<Duration>(std::chrono::seconds{2})
+	);
+}
+
+TEST_F(OptionTest, RepeatableFormatting) {
+	std::vector<Duration> value{
+	    std::chrono::microseconds{12},
+	    std::chrono::milliseconds{40},
+	    std::chrono::seconds{2},
+	};
+
+	auto opt = RepeatableOption<Duration>{
+	    {
+	        .Name = "my-flag",
+	    },
+	    value,
+	};
+	{
+		std::ostringstream out;
+		opt.Format(out);
+		EXPECT_EQ(out.str(), "[12.000us, 40.000ms, 2.000s]");
+	}
+	value.clear();
+
+	{
+		std::ostringstream out;
+		opt.Format(out);
+		EXPECT_EQ(out.str(), "[]");
 	}
 }
 
