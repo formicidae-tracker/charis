@@ -2,9 +2,11 @@
 
 #include <fort/options/details/Option.hpp>
 #include <fort/options/details/Traits.hpp>
+#include <libavcodec/avcodec.h>
 #include <map>
 #include <memory>
 #include <optional>
+#include <regex>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -15,7 +17,7 @@ constexpr char NO_SHORT = 0;
 
 using OptionArgs = details::OptionArgs;
 
-class OptionGroup : std::enable_shared_from_this<OptionGroup> {
+class OptionGroup : public std::enable_shared_from_this<OptionGroup> {
 public:
 	OptionGroup(
 	    const std::string           &name,
@@ -33,8 +35,8 @@ public:
 			d_shortFlags = std::nullopt;
 		} else {
 			d_name       = "";
-			d_parent     = std::nullopt;
 			d_shortFlags = ValuesByShort{};
+			d_parent     = std::nullopt;
 		}
 	}
 
@@ -62,6 +64,23 @@ public:
 		pushOption(opt);
 	}
 
+	std::shared_ptr<OptionGroup>
+	AddGroup(const std::string &name, const std::string &description) {
+		checkName(name);
+		if (d_subgroups.count(name) != 0) {
+			return d_subgroups.at(name);
+		}
+
+		auto res = std::make_shared<OptionGroup>(
+		    name,
+		    description,
+		    shared_from_this()
+		);
+
+		d_subgroups[name] = res;
+		return res;
+	}
+
 private:
 	using OptionPtr = std::shared_ptr<details::OptionBase>;
 
@@ -82,7 +101,9 @@ private:
 		return "";
 	}
 
-	void checkArgs(const OptionArgs &args) {
+	void checkArgs(const OptionArgs &args) const {
+		checkName(args.Name);
+
 		if (d_longFlags.count(args.Name) > 0) {
 			throw std::invalid_argument{
 			    "option '" + fullOptionName(args.Name) + "' already specified",
@@ -114,6 +135,13 @@ private:
 		}
 	}
 
+	static void checkName(const std::string &name) {
+		static std::regex nameRx{"[a-zA-Z\\-_0-9]+"};
+		if (std::regex_match(name, nameRx) == false) {
+			throw std::invalid_argument{"invalid name '" + name + "'"};
+		}
+	}
+
 	void pushOption(OptionPtr option) {
 		d_longFlags[option->Name()] = option;
 		mayPushShort(shared_from_this(), option);
@@ -140,9 +168,27 @@ private:
 
 	std::optional<GroupWeakPtr>  d_parent;
 	std::optional<ValuesByShort> d_shortFlags;
+
+	std::map<std::string, GroupPtr> d_subgroups;
 };
 
-class OptionParser : public OptionGroup {};
+class OptionParser : public OptionGroup {
+public:
+	using Ptr = std::shared_ptr<OptionParser>;
+
+	static Ptr Create(const std::string &name, const std::string &description) {
+		auto res = new OptionParser(name, description);
+		return Ptr{res};
+	}
+
+	std::vector<std::string> Parse(int argc, const char **argv);
+
+	void ParseYAML(const std::string &yamlFile);
+
+private:
+	OptionParser(const std::string &name, const std::string &description)
+	    : OptionGroup{name, description, nullptr} {}
+};
 
 } // namespace options
 } // namespace fort
