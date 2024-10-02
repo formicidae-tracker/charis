@@ -40,9 +40,9 @@ class CppSource:
         return CppSource._BaseArgs
 
     @staticmethod
-    def Parse(filename, name="Options"):
+    def Parse(filename):
         source = CppSource(filename)
-        return source.parseDeclaration(name)
+        return source.parseDeclaration()
 
     def __init__(self, filename):
         self.enumerate_declaration(filename)
@@ -65,20 +65,19 @@ class CppSource:
                 cursor.location.file and cursor.location.file.name != filename
             ):
                 continue
-            self.declarations[cursor.displayname] = cursor
+            self.declarations[cursor.get_usr()] = cursor
 
-    def parseDeclaration(self, name: str):
-        ref = self.declarations[name]
-        if ref is None:
-            raise RuntimeError(f"Could not find structure '{name}'")
-
-        res = CppStruct(Name=name, Fields={})
-        for cursor in ref.get_children():
-            if cursor.kind != cindex.CursorKind.FIELD_DECL:
-                continue
-            res.Fields[cursor.displayname] = CppField(
-                Name=cursor.displayname,
-                Type=cursor.type.spelling,
-            )
+    def parseDeclaration(self) -> Dict[str, CppStruct]:
+        res = {}
+        for (name, cursor) in self.declarations.items():
+            res[name] = CppStruct(Name=cursor.displayname, Fields={})
+            for child in cursor.get_children():
+                if child.kind != cindex.CursorKind.FIELD_DECL:
+                    continue
+                print(child.kind)
+                res[name].Fields[child.displayname] = CppField(
+                    Name=child.displayname,
+                    Type=child.type.spelling,
+                )
 
         return res
