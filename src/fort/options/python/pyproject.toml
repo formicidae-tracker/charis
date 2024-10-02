@@ -2,35 +2,47 @@
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-# All the following settings are optional:
-where = ["."]  # ["."] by default
-include = ["fort_charis_options*"]  # ["*"] by default
-exclude = ["tests*"]  # empty by default
-namespaces = true  # true by default
 
 [project]
 name = "fort-charis-options"
-version = "0.0.1"
+version = "0.0.1a1"
 authors = [
   { name="Alexandre Tuleu", email="alexandre.tuleu.2005@polytechnique.org" },
 ]
 description = "C++ Options generator"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+
 dependencies = [
     "libclang"
 ]
+
 license = {file = "LICENSE"}
 
 [project.scripts]
+
 fort-charis-options = "fort_charis_options:main"
 
 [project.urls]
-Homepage = "https://github.com/formicidae-tracker/charis/src/fort/options"
+Homepage = "https://github.com/formicidae-tracker/charis/src/fort/options/python"
 Issues = "https://github.com/formicidae-tracker/charis/"
+
+
+[project.optional-dependencies]
+dev = [
+    "black>=22.10",
+    "pytest",
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py310']
+preview = true
+unstable = true
+
+[tool.pyright]
