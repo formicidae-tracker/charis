@@ -5,7 +5,9 @@ from fort_charis_options.source_parser import CppField, CppSource, CppStruct
 
 
 class StructureParserTest(unittest.TestCase):
-    EXAMPLE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "examples")
+    EXAMPLE_PATH = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "examples"
+    )
 
     def test_can_parse_flat_struct(self):
         self.maxDiff = None
@@ -16,11 +18,37 @@ class StructureParserTest(unittest.TestCase):
                 "c:@S@Options": CppStruct(
                     Name="Options",
                     Fields={
-                        "AnInt": CppField(Name="AnInt", Type="int"),
-                        "ADouble": CppField(Name="ADouble", Type="double"),
-                        "AString": CppField(Name="AString", Type="std::string"),
+                        "AnInt": CppField(
+                            Name="AnInt",
+                            Type="int",
+                            Short="I",
+                            Long="integer",
+                            Description="An Integer",
+                            Required=False,
+                        ),
+                        "ADouble": CppField(
+                            Name="ADouble",
+                            Type="double",
+                            Short="d",
+                            Long="double",
+                            Description="A double",
+                            Required=True,
+                        ),
+                        "AString": CppField(
+                            Name="AString",
+                            Type="std::string",
+                            Short=None,
+                            Long="string",
+                            Description="A String",
+                            Required=False,
+                        ),
                         "AVectorOfInt": CppField(
-                            Name="AVectorOfInt", Type="std::vector<int>"
+                            Name="AVectorOfInt",
+                            Type="std::vector<int>",
+                            Short="R",
+                            Long="repeat",
+                            Description="a repeatable",
+                            Required=False,
                         ),
                     },
                 ),

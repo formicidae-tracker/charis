@@ -1,21 +1,41 @@
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 
 from clang import cindex
+from jinja2.defaults import DEFAULT_NAMESPACE
 
 
 @dataclass
 class CppField:
     Name: str
     Type: str
+    Short: Optional[str]
+    Long: str
+    Description: str = ""
+    Required: bool = False
 
 
 @dataclass
 class CppStruct:
     Name: str
     Fields: Dict[str, CppField]
+
+
+tagRx = re.compile(r"""([a-zA-Z_]+):"(.*)"$""")
+
+
+def _parseTags(tags: str):
+    res = {}
+    if tags is None:
+        return res
+    for t in tags.strip().split(" "):
+        match = tagRx.match(t)
+        if match is None:
+            continue
+        res[match[1]] = match[2]
+    return res
 
 
 class CppSource:
@@ -69,15 +89,21 @@ class CppSource:
 
     def parseDeclaration(self) -> Dict[str, CppStruct]:
         res = {}
-        for (name, cursor) in self.declarations.items():
+        for name, cursor in self.declarations.items():
             res[name] = CppStruct(Name=cursor.displayname, Fields={})
             for child in cursor.get_children():
                 if child.kind != cindex.CursorKind.FIELD_DECL:
                     continue
-                print(child.kind)
+
+                tags = _parseTags(child.brief_comment)
+
                 res[name].Fields[child.displayname] = CppField(
                     Name=child.displayname,
                     Type=child.type.spelling,
+                    Short=tags.get("short", None),
+                    Long=tags.get("long", ""),
+                    Description=tags.get("description", ""),
+                    Required=tags.get("required", "false") == "true",
                 )
 
         return res

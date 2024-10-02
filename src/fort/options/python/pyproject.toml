@@ -19,7 +19,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "libclang"
+    "libclang",
+	"jinja2"
 ]
 
 license = {file = "LICENSE"}

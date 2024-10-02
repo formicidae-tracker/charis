@@ -2,8 +2,8 @@ find_package(Python REQUIRED)
 
 add_custom_target(
 	charis-options-pytests
-	${Python_EXECUTABLE} -m unittest
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	${Python_EXECUTABLE} -m pytest
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
 )
 
 add_dependencies(check charis-options-pytests)
