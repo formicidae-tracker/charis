@@ -59,3 +59,8 @@ else(NOT CHARIS_IMPORTED)
 	)
 	target_link_libraries(fort-charis::libfort-time INTERFACE fort-time)
 endif(NOT CHARIS_IMPORTED)
+
+install(FILES Time.hpp ${CMAKE_CURRENT_BINARY_DIR}/version.hpp
+		DESTINATION include/fort/time
+)
+install(TARGETS fort-time DESTINATION lib)
