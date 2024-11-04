@@ -28,3 +28,5 @@ if(NOT CHARIS_IMPORTED)
 	gtest_discover_tests(charis-options-tests)
 	add_dependencies(check charis-options-tests)
 endif(NOT CHARIS_IMPORTED)
+
+install(FILES ${HDR_FILES} DESTINATION include/fort/options)

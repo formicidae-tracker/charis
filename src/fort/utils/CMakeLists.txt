@@ -15,3 +15,5 @@ target_include_directories(
 	fort-charis::libfort-utils INTERFACE ${PROJECT_SOURCE_DIR}/src
 )
 target_link_libraries(fort-charis::libfort-utils INTERFACE concurrentqueue)
+
+install(FILES ${HDR_FILES} DESTINATION include/fort/utils)

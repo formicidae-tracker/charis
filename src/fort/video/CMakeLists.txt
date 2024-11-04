@@ -35,3 +35,6 @@ else(NOT CHARIS_IMPORTED)
 		fort-charis::libfort-video INTERFACE ${PROJECT_SOURCE_DIR}/src
 	)
 endif(NOT CHARIS_IMPORTED)
+
+install(FILES ${HDR_FILES} DESTINATION include/fort/video)
+install(TARGETS fort-video DESTINATION lib)
