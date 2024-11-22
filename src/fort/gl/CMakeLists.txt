@@ -24,12 +24,7 @@ set(HDR_FILES #
 )
 
 add_library(fort-gl SHARED ${SRC_FILES} ${HDR_FILES})
-
-add_resources(
-	TARGET fort-gl #
-	RESOURCES shaders/text.fragment #
-	shaders/text.vertex #
-)
+add_library(fort-charis::libfort-gl ALIAS fort-gl)
 
 set_target_properties(
 	fort-gl
@@ -37,16 +32,19 @@ set_target_properties(
 			   SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
 )
 
+add_resources(
+	TARGET fort-gl #
+	RESOURCES shaders/text.fragment #
+	shaders/text.vertex #
+)
+
+target_include_directories(fort-gl INTERFACE ${PROJECT_SOURCE_DIR}/src)
+
 target_link_libraries(
 	fort-gl
-	GLEW::glew
-	glfw
-	OpenGL::GL
-	Eigen3::Eigen
-	slog++::slog++
-	concurrentqueue
-	Fontconfig::Fontconfig
-	Freetype::Freetype
+	PUBLIC GLEW::glew glfw OpenGL::GL Eigen3::Eigen
+	PRIVATE slog++::slog++ concurrentqueue Fontconfig::Fontconfig
+			Freetype::Freetype
 )
 
 if(NOT CHARIS_IMPORTED)
@@ -60,21 +58,11 @@ if(NOT CHARIS_IMPORTED)
 
 	add_executable(charis-gl-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})
 	target_link_libraries(
-		charis-gl-tests fort-gl GTest::gtest_main GTest::gmock_main
-		Eigen3::Eigen
+		charis-gl-tests fort-charis::libfort-gl GTest::gtest_main
+		GTest::gmock_main
 	)
 	gtest_discover_tests(charis-gl-tests)
 	add_dependencies(check charis-gl-tests)
-else(NOT CHARIS_IMPORTED)
-	add_library(fort-charis::gl INTERFACE IMPORTED GLOBAL)
-	target_link_libraries(
-		fort-charis::libfort-gl INTERFACE fort-gl GLEW::glew glfw OpenGL::GL
-										  Eigen3::Eigen
-	)
-	target_include_directories(
-		fort-charis::libfort-gl INTERFACE ${PROJECT_SOURCE_DIR}/src
-	)
-
 endif(NOT CHARIS_IMPORTED)
 
 install(FILES ${HDR_FILES} DESTINATION include/fort/gl)

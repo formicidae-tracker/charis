@@ -33,16 +33,19 @@ set(FORT_TIME_ABI 1)
 configure_file(version.hpp.in version.hpp @ONLY)
 
 add_library(fort-time SHARED Time.cpp Time.hpp)
-
+add_library(fort-charis::libfort-time ALIAS fort-time)
 set_target_properties(
 	fort-time PROPERTIES VERSION ${FORT_TIME_VERSION} #
 						 SOVERSION ${FORT_TIME_ABI}
 )
+target_include_directories(
+	fort-time INTERFACE ${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src
+)
 
-target_link_libraries(fort-time protobuf::libprotobuf)
+target_link_libraries(fort-time PUBLIC protobuf::libprotobuf)
 
 if(NEED_RT_LINK)
-	target_link_libraries(fort-time "-lrt")
+	target_link_libraries(fort-time PUBLIC "-lrt")
 endif(NEED_RT_LINK)
 
 if(NOT CHARIS_IMPORTED)
@@ -52,11 +55,7 @@ if(NOT CHARIS_IMPORTED)
 	gtest_discover_tests(fort-time-tests)
 	add_dependencies(check fort-time-tests)
 else(NOT CHARIS_IMPORTED)
-	add_library(fort-charis::libfort-time INTERFACE IMPORTED GLOBAL)
-	target_include_directories(
-		fort-charis::libfort-time INTERFACE ${PROJECT_SOURCE_DIR}/src
-											${PROJECT_BINARY_DIR}/src
-	)
+
 	target_link_libraries(fort-charis::libfort-time INTERFACE fort-time)
 endif(NOT CHARIS_IMPORTED)
 

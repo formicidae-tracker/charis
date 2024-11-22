@@ -1,28 +1,14 @@
-find_package(Python REQUIRED)
-
-if(NOT CHARIS_IMPORTED)
-	add_custom_target(
-		charis-options-pytests
-		${Python_EXECUTABLE} -m pytest
-		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python
-	)
-
-	add_dependencies(check charis-options-pytests)
-
-endif(NOT CHARIS_IMPORTED)
-
-set(SRC_FILES details/Traits.cpp details/Option.cpp Options.cpp)
-set(HDR_FILES details/Traits.hpp details/Option.cpp Options.hpp)
-
-add_library(fort-charis::libfort-options INTERFACE IMPORTED GLOBAL)
-target_include_directories(
-	fort-charis::libfort-options INTERFACE ${PROJECT_SOURCE_DIR}/src
+set(TEST_SRC_FILES #
+	OptionsTest.cpp #
+	details/OptionTest.cpp #
+	details/TraitsTest.cpp
 )
 
+add_library(fort-options INTERFACE)
+add_library(fort-charis::libfort-options ALIAS fort-options)
+target_include_directories(fort-options INTERFACE ${PROJECT_SOURCE_DIR}/src)
+
 if(NOT CHARIS_IMPORTED)
-	set(TEST_SRC_FILES details/TraitsTest.cpp details/OptionTest.cpp
-					   OptionsTest.cpp
-	)
 
 	add_executable(charis-options-tests ${TEST_SRC_FILES} ${HDR_FILES})
 	target_link_libraries(
