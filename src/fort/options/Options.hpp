@@ -87,6 +87,18 @@ public:
 
 	template <typename T> operator T() {}
 
+	void ParseArguments(int argc, const char **argv) {
+		throw std::runtime_error("not yet implemented");
+	}
+
+	void ParseYAML(const std::string &filename) {
+		throw std::runtime_error("not yet implemented");
+	}
+
+	void ParseINI(const std::string &filename) {
+		throw std::runtime_error("not yet implemented");
+	}
+
 private:
 	using OptionPtr = std::unique_ptr<details::OptionBase>;
 	using GroupPtr  = std::unique_ptr<Group>;
@@ -106,11 +118,6 @@ private:
 		return "";
 	}
 
-	static std::tuple<std::optional<char>, std::string>
-	parseDesignator(const std::string &) {
-		throw std::runtime_error{"not yet implemented"};
-	}
-
 	details::OptionArgs checkArgs(
 	    const std::string &designator, const std::string &description
 	) const {
@@ -118,11 +125,8 @@ private:
 			throw std::invalid_argument{"Description cannot be empty"};
 		}
 
-		if (designator.empty()) {
-			throw std::invalid_argument{"Designator cannot be empty"};
-		}
-
-		const auto [shortName, longName] = parseDesignator(designator);
+		const auto [shortName, longName] =
+		    details::parseDesignators(designator);
 
 		if (d_longFlags.count(longName) > 0) {
 			throw std::invalid_argument{
