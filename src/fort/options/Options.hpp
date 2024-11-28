@@ -1,8 +1,5 @@
 #pragma once
 
-#include <fort/options/details/Option.hpp>
-#include <fort/options/details/Traits.hpp>
-#include <libavcodec/avcodec.h>
 #include <map>
 #include <memory>
 #include <optional>
@@ -10,6 +7,10 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+
+#include <fort/options/details/Designator.hpp>
+#include <fort/options/details/Option.hpp>
+#include <fort/options/details/Traits.hpp>
 
 namespace fort {
 namespace options {
@@ -68,7 +69,7 @@ public:
 
 	template <typename T, std::enable_if_t<std::is_base_of_v<Group, T>>>
 	T &AddSubgroup(const std::string &name, const std::string &description) {
-		checkName(name);
+		details::checkName(name);
 		if (d_subgroups.count(name) != 0) {
 			throw std::invalid_argument("group '" + name + "' already exist");
 		}
@@ -92,7 +93,7 @@ private:
 
 	using ValuesByShort =
 	    std::map<char, std::pair<Group *, details::OptionBase *>>;
-	using ValuesByLong  = std::map<std::string, OptionPtr>;
+	using ValuesByLong = std::map<std::string, OptionPtr>;
 
 	std::string fullOptionName(const std::string &name) const {
 		return prefix() + name;
@@ -157,13 +158,6 @@ private:
 			}
 		} else {
 			throw std::logic_error{"invalid group hierarchy"};
-		}
-	}
-
-	static void checkName(const std::string &name) {
-		static std::regex nameRx{"[a-zA-Z][a-zA-Z\\-_0-9]*"};
-		if (std::regex_match(name, nameRx) == false) {
-			throw std::invalid_argument{"invalid name '" + name + "'"};
 		}
 	}
 
