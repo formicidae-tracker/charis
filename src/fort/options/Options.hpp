@@ -15,79 +15,83 @@ namespace fort {
 namespace options {
 constexpr char NO_SHORT = 0;
 
-using OptionArgs = details::OptionArgs;
-
-class OptionGroup : public std::enable_shared_from_this<OptionGroup> {
+class Group {
 public:
-	OptionGroup(
-	    const std::string           &name,
-	    const std::string           &description,
-	    std::shared_ptr<OptionGroup> parent = nullptr
+	Group()
+	    : d_parent{std::nullopt}
+	    , d_shortFlags{ValuesByShort{}} {}
+
+	Group(
+	    const std::string &name, const std::string &description, Group *parent
 	)
 	    : d_name{name}
 	    , d_description{description} {
-		if (parent) {
-			if (name.empty()) {
-				throw std::invalid_argument{
-				    "name could not be empty for child group"};
-			}
-			d_parent     = parent;
-			d_shortFlags = std::nullopt;
-		} else {
-			d_name       = "";
-			d_shortFlags = ValuesByShort{};
-			d_parent     = std::nullopt;
+
+		if (name.empty()) {
+			throw std::invalid_argument{
+			    "name could not be empty for child group"};
 		}
+		d_parent     = parent;
+		d_shortFlags = std::nullopt;
 	}
 
-	virtual ~OptionGroup() = default;
+	virtual ~Group() = default;
 
 	template <
 	    typename T,
 	    std::enable_if_t<details::is_optionable_v<T>> * = nullptr>
-	void AddOption(OptionArgs &&args, T &value) {
-		checkArgs(args);
-		auto opt = std::make_shared<details::Option<T>>(std::move(args), value);
-		pushOption(opt);
+
+	details::Option<T> &AddOption(
+	    const std::string &designator,
+	    const std::string &description,
+	    std::optional<T>   implicit = std::nullopt
+	) {
+		auto opt = std::make_unique<details::Option<T>>(
+		    checkArgs(designator, description),
+		    implicit
+		);
+		return pushOption(std::move(opt));
 	}
 
 	template <
 	    typename T,
 	    std::enable_if_t<details::is_specialization_v<T, std::vector>> * =
 	        nullptr>
-	void AddOption(OptionArgs &&args, T &value) {
-		checkArgs(args);
+	details::Option<T> &
+	AddOption(const std::string &designator, const std::string &description) {
 		auto opt = std::make_shared<details::RepeatableOption<T>>(
-		    std::move(args),
-		    value
+		    checkArgs(designator, description)
 		);
 		pushOption(opt);
+		return opt;
 	}
 
-	std::shared_ptr<OptionGroup>
-	AddGroup(const std::string &name, const std::string &description) {
+	template <typename T, std::enable_if_t<std::is_base_of_v<Group, T>>>
+	T &AddSubgroup(const std::string &name, const std::string &description) {
 		checkName(name);
 		if (d_subgroups.count(name) != 0) {
-			return d_subgroups.at(name);
+			throw std::invalid_argument("group '" + name + "' already exist");
 		}
 
-		auto res = std::make_shared<OptionGroup>(
-		    name,
-		    description,
-		    shared_from_this()
-		);
+		auto group = std::make_shared<T>(name, description, this);
 
-		d_subgroups[name] = res;
-		return res;
+		d_subgroups.insert(name, group);
+
+		return *group;
 	}
 
+	template <typename T> operator T &() {
+		return *this;
+	}
+
+	template <typename T> operator T() {}
+
 private:
-	using OptionPtr = std::shared_ptr<details::OptionBase>;
+	using OptionPtr = std::unique_ptr<details::OptionBase>;
+	using GroupPtr  = std::unique_ptr<Group>;
 
-	using GroupPtr     = std::shared_ptr<OptionGroup>;
-	using GroupWeakPtr = std::weak_ptr<OptionGroup>;
-
-	using ValuesByShort = std::map<char, std::pair<GroupPtr, OptionPtr>>;
+	using ValuesByShort =
+	    std::map<char, std::pair<Group *, details::OptionBase *>>;
 	using ValuesByLong  = std::map<std::string, OptionPtr>;
 
 	std::string fullOptionName(const std::string &name) const {
@@ -96,34 +100,55 @@ private:
 
 	std::string prefix() const {
 		if (d_parent.has_value()) {
-			return d_parent->lock()->prefix() + d_name + ".";
+			return d_parent.value()->prefix() + d_name + ".";
 		}
 		return "";
 	}
 
-	void checkArgs(const OptionArgs &args) const {
-		checkName(args.Name);
+	static std::tuple<std::optional<char>, std::string>
+	parseDesignator(const std::string &) {
+		throw std::runtime_error{"not yet implemented"};
+	}
 
-		if (d_longFlags.count(args.Name) > 0) {
+	details::OptionArgs checkArgs(
+	    const std::string &designator, const std::string &description
+	) const {
+		if (description.empty()) {
+			throw std::invalid_argument{"Description cannot be empty"};
+		}
+
+		if (designator.empty()) {
+			throw std::invalid_argument{"Designator cannot be empty"};
+		}
+
+		const auto [shortName, longName] = parseDesignator(designator);
+
+		if (d_longFlags.count(longName) > 0) {
 			throw std::invalid_argument{
-			    "option '" + fullOptionName(args.Name) + "' already specified",
+			    "option '" + fullOptionName(longName) + "' already specified",
 			};
 		}
 
-		auto [parent, option] = this->findShort(args.ShortFlag);
+		auto [parent, option] = this->findShort(shortName.value_or(0));
 
-		if (args.ShortFlag != NO_SHORT && option) {
+		if (shortName.has_value() && option != nullptr) {
 			throw std::invalid_argument{
-			    "short flag '" + std::string{1, args.ShortFlag} +
+			    "short flag '" + std::string{1, shortName.value()} +
 			        "' already used by option '" +
 			        parent->fullOptionName(option->Name()) + "'",
 			};
 		}
+
+		return {
+		    .ShortFlag   = shortName,
+		    .Name        = longName,
+		    .Description = description,
+		};
 	}
 
-	std::tuple<GroupPtr, OptionPtr> findShort(char flag) const {
+	std::tuple<Group *, details::OptionBase *> findShort(char flag) const {
 		if (d_parent.has_value()) {
-			return d_parent->lock()->findShort(flag);
+			return d_parent.value()->findShort(flag);
 		} else if (d_shortFlags.has_value()) {
 			try {
 				return d_shortFlags.value().at(flag);
@@ -136,26 +161,29 @@ private:
 	}
 
 	static void checkName(const std::string &name) {
-		static std::regex nameRx{"[a-zA-Z\\-_0-9]+"};
+		static std::regex nameRx{"[a-zA-Z][a-zA-Z\\-_0-9]*"};
 		if (std::regex_match(name, nameRx) == false) {
 			throw std::invalid_argument{"invalid name '" + name + "'"};
 		}
 	}
 
-	void pushOption(OptionPtr option) {
-		d_longFlags[option->Name()] = option;
-		mayPushShort(shared_from_this(), option);
+	template <typename T>
+	details::Option<T> &pushOption(std::unique_ptr<details::Option<T>> option) {
+		auto opt                    = option.get();
+		d_longFlags[option->Name()] = std::move(option);
+		mayPushShort(this, opt);
+		return *opt;
 	}
 
-	void mayPushShort(const GroupPtr &owner, const OptionPtr &option) {
-		if (option->Short() == NO_SHORT) {
+	void mayPushShort(Group *owner, details::OptionBase *option) {
+		if (option->Short().has_value() == false) {
 			return;
 		}
 
 		if (d_parent.has_value()) {
-			d_parent->lock()->mayPushShort(owner, option);
+			d_parent.value()->mayPushShort(owner, option);
 		} else if (d_shortFlags.has_value()) {
-			d_shortFlags.value()[option->Short()] = {owner, option};
+			d_shortFlags.value()[option->Short().value()] = {owner, option};
 		} else {
 			throw std::logic_error{"invalid group hierarchy"};
 		}
@@ -166,28 +194,9 @@ private:
 
 	ValuesByLong d_longFlags;
 
-	std::optional<GroupWeakPtr>  d_parent;
-	std::optional<ValuesByShort> d_shortFlags;
-
+	std::optional<Group *>          d_parent;
+	std::optional<ValuesByShort>    d_shortFlags;
 	std::map<std::string, GroupPtr> d_subgroups;
-};
-
-class OptionParser : public OptionGroup {
-public:
-	using Ptr = std::shared_ptr<OptionParser>;
-
-	static Ptr Create(const std::string &name, const std::string &description) {
-		auto res = new OptionParser(name, description);
-		return Ptr{res};
-	}
-
-	std::vector<std::string> Parse(int argc, const char **argv);
-
-	void ParseYAML(const std::string &yamlFile);
-
-private:
-	OptionParser(const std::string &name, const std::string &description)
-	    : OptionGroup{name, description, nullptr} {}
 };
 
 } // namespace options

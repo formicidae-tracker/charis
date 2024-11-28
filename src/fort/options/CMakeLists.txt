@@ -1,7 +1,8 @@
 set(TEST_SRC_FILES #
 	OptionsTest.cpp #
 	details/OptionTest.cpp #
-	details/TraitsTest.cpp
+	details/TraitsTest.cpp #
+	details/DesignatorTest.cpp
 )
 
 set(HDR_FILES
@@ -9,6 +10,7 @@ set(HDR_FILES
 	details/Option.hpp #
 	details/Traits.hpp #
 	details/config.hpp
+	details/Designator.hpp
 )
 
 add_library(fort-options INTERFACE)

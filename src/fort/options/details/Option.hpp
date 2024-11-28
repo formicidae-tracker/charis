@@ -19,11 +19,11 @@ namespace options {
 namespace details {
 
 struct OptionData {
-	char        ShortFlag;
-	std::string Name, Description;
-	size_t      NumArgs = 1;
-	bool        Required;
-	bool        Repeatable;
+	std::optional<char> ShortFlag;
+	std::string         Name, Description;
+	size_t              NumArgs = 1;
+	bool                Required;
+	bool                Repeatable;
 };
 
 class ParseError : public std::runtime_error {
@@ -84,7 +84,7 @@ public:
 		return OptionData::Description;
 	}
 
-	inline char Short() const noexcept {
+	inline const std::optional<char> &Short() const noexcept {
 		return OptionData::ShortFlag;
 	}
 
@@ -168,16 +168,16 @@ inline void OptionBase::Parse<bool>(const std::string &value, bool &res) const {
 }
 
 struct OptionArgs {
-	char        ShortFlag;
-	std::string Name;
-	std::string Description;
-	bool        Required;
+	std::optional<char> ShortFlag;
+	std::string         Name;
+	std::string         Description;
+	bool                Required;
 };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class Option : public OptionBase {
 public:
-	Option(OptionArgs &&args)
+	Option(OptionArgs &&args, std::optional<T> implicit = std::nullopt)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
@@ -186,6 +186,11 @@ public:
 	          .Required    = std::is_same_v<T, bool> ? false : true,
 	          .Repeatable  = false,
 	      }} {
+		if (implicit.has_value()) {
+			this->value = implicit.value();
+			return;
+		}
+
 		if constexpr (std::is_fundamental_v<T>) {
 			value = 0;
 		}
@@ -197,7 +202,7 @@ public:
 			}
 		}
 #endif
-	}
+		}
 
 	void Parse(const std::optional<std::string> &value) override {
 		if (NumArgs() > 0 && value.has_value() == false) {
@@ -210,13 +215,20 @@ public:
 		OptionBase::Format<T>(out, value);
 	}
 
-	void SetDefault(const T &value) {
+	Option &SetDefault(const T &value) {
 		SetRequired(false);
 		this->value = value;
+		return *this;
 	}
 
+	operator T &() {
+		return value;
+	}
+
+	template <typename U> operator U() {}
+
 	T value;
-};
+	};
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class RepeatableOption : public OptionBase {
