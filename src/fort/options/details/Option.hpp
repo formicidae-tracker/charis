@@ -1,7 +1,10 @@
 #pragma once
 
 #include "Traits.hpp"
+#include "magic_enum/magic_enum.hpp"
+#include <cctype>
 #include <ios>
+#include <iterator>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -25,9 +28,43 @@ struct OptionData {
 
 class ParseError : public std::runtime_error {
 public:
-	ParseError(const std::string &name, const std::string &value)
+	ParseError(const std::string &name, const std::string &value) noexcept
 	    : std::runtime_error{"could not parse " + name + "='" + value + "'"} {}
+
+	ParseError(
+	    const std::string &name,
+	    const std::string &value,
+	    const std::string &reason
+	) noexcept
+	    : std::runtime_error{
+	          "could not parse " + name + "='" + value + "': " + reason} {}
 };
+
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+template <typename T, std::enable_if_t<std::is_enum_v<T>> * = nullptr>
+class ParseEnumError : public ParseError {
+public:
+	ParseEnumError(const std::string &name, const std::string &value)
+	    : ParseError{name, value, reason()} {}
+
+private:
+	static std::string reason() {
+		constexpr auto    &entries = magic_enum::enum_values<T>();
+		std::ostringstream oss;
+		std::string        prefix{"['"};
+
+		oss << "possible enum values are ";
+
+		for (const auto &e : entries) {
+			oss << prefix << magic_enum::enum_name(e);
+			prefix = "', '";
+		}
+
+		oss << "']";
+		return oss.str();
+	}
+};
+#endif
 
 class OptionBase : private OptionData {
 public:
@@ -63,13 +100,51 @@ public:
 		return OptionData::NumArgs;
 	}
 
+	void SetRequired(bool required) noexcept {
+		this->OptionData::Required = required;
+	}
+
 protected:
 	template <typename T>
 	inline void Parse(const std::string &value, T &res) const {
-		std::istringstream iss(value);
-		iss >> res;
-		if (iss.fail()) {
-			throw ParseError{OptionData::Name, value};
+		if constexpr (std::is_enum_v<T>) {
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+			auto v = magic_enum::enum_cast<T>(value);
+			if (v.has_value() == false) {
+				throw ParseEnumError<T>{OptionData::Name, value};
+			}
+			res = v.value();
+#else
+			throw std::logic_error(
+			    "Enum are not supported, please link with magic_enum"
+			);
+#endif
+
+		} else {
+			std::istringstream iss(value);
+			iss >> res;
+			if (iss.fail()) {
+				throw ParseError{OptionData::Name, value};
+			}
+		}
+	}
+
+	template <typename T>
+	inline static void Format(std::ostream &out, const T &value) {
+		if constexpr (std::is_enum_v<T>) {
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+			out << magic_enum::enum_name(value);
+#else
+			throw std::logic_error(
+			    "Enum are not supported, please link with magic_enum"
+			);
+#endif
+		} else {
+			auto f = out.flags();
+			defer {
+				out.flags(f);
+			};
+			out << std::boolalpha << value;
 		}
 	}
 };
@@ -102,78 +177,85 @@ struct OptionArgs {
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class Option : public OptionBase {
 public:
-	Option(OptionArgs &&args, T &value)
+	Option(OptionArgs &&args)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
 	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
-	          .Required    = std::is_same_v<T, bool> ? false : args.Required,
+	          .Required    = std::is_same_v<T, bool> ? false : true,
 	          .Repeatable  = false,
-	      }}
-	    , d_value{value} {
-		if constexpr (std::is_same_v<T, bool>) {
-			d_value = false;
+	      }} {
+		if constexpr (std::is_fundamental_v<T>) {
+			value = 0;
 		}
+
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+		if constexpr (std::is_enum_v<T>) {
+			if constexpr (magic_enum::enum_count<T>() > 0) {
+				value = magic_enum::enum_values<T>()[0];
+			}
+		}
+#endif
 	}
 
 	void Parse(const std::optional<std::string> &value) override {
 		if (NumArgs() > 0 && value.has_value() == false) {
 			throw ParseError{Name(), ""};
 		}
-		OptionBase::Parse<T>(value.value_or(""), d_value);
+		OptionBase::Parse<T>(value.value_or(""), this->value);
 	}
 
 	void Format(std::ostream &out) const override {
-		auto f = out.flags();
-		defer {
-			out.flags(f);
-		};
-		out << std::boolalpha << d_value;
+		OptionBase::Format<T>(out, value);
 	}
 
-private:
-	T &d_value;
+	void SetDefault(const T &value) {
+		SetRequired(false);
+		this->value = value;
+	}
+
+	T value;
 };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class RepeatableOption : public OptionBase {
 public:
-	RepeatableOption(OptionArgs &&args, std::vector<T> &value)
+	RepeatableOption(OptionArgs &&args)
 	    : OptionBase{{
 	          .ShortFlag   = args.ShortFlag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
 	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
-	          .Required    = std::is_same_v<T, bool> ? false : args.Required,
+	          .Required    = false,
 	          .Repeatable  = false,
-	      }}
-	    , d_value{value} {}
+	      }} {}
 
 	void Parse(const std::optional<std::string> &value) override {
 		if (NumArgs() > 0 && value.has_value() == false) {
 			throw ParseError{Name(), ""};
 		}
 
-		OptionBase::Parse<T>(value.value_or(""), d_value.emplace_back());
+		OptionBase::Parse<T>(value.value_or(""), this->value.emplace_back());
 	}
 
 	void Format(std::ostream &out) const override {
-		auto f = out.flags();
-		defer {
-			out.flags(f);
-		};
 		std::string sep = "";
 		out << std::boolalpha << "[";
-		for (const auto &v : d_value) {
-			out << sep << v;
+		for (const auto &v : value) {
+			out << sep;
+			OptionBase::Format<T>(out, v);
 			sep = ", ";
 		}
 		out << "]";
 	}
 
-private:
-	std::vector<T> &d_value;
+	void SetDefault(const std::vector<T> &value) {
+		SetRequired(false);
+		this->value = value;
+	}
+
+	std::vector<T> value;
 };
 
 } // namespace details

@@ -7,8 +7,16 @@ FetchContent_Declare(
 	GIT_REPOSITORY https://github.com/cameron314/concurrentqueue.git
 	GIT_TAG v1.0.4
 )
-
 FetchContent_MakeAvailable(concurrentqueue)
+if(FORT_CHARIS_USE_MAGIC_ENUM)
+	FetchContent_Declare(
+		magic_enum
+		GIT_REPOSITORY https://github.com/Neargye/magic_enum.git
+		GIT_TAG v0.9.7
+	)
+	FetchContent_MakeAvailable(magic_enum)
+endif(FORT_CHARIS_USE_MAGIC_ENUM)
+
 if(FORT_CHARIS_BUILD_UTILS)
 	add_subdirectory(utils)
 endif(FORT_CHARIS_BUILD_UTILS)

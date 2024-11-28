@@ -17,41 +17,35 @@ namespace details {
 class OptionTest : public testing::Test {};
 
 TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
-	bool value{true};
-	auto opt = Option<bool>(
+	auto opt = Option<bool>{
 	    {
 	        .ShortFlag   = 0,
 	        .Name        = "my-flag",
 	        .Description = "turn my flag on",
 	        .Required    = true,
 	    },
-	    value
-	);
-	EXPECT_FALSE(value);
+	};
+	EXPECT_FALSE(opt.value);
 	EXPECT_FALSE(opt.Required());
 	EXPECT_FALSE(opt.Repeatable());
 	EXPECT_EQ(opt.NumArgs(), 0);
 }
 
 TEST_F(OptionTest, BoolParsing) {
-	bool value{false};
-	auto opt = Option<bool>(
-	    {
-	        .ShortFlag   = 0,
-	        .Name        = "my-flag",
-	        .Description = "turn my flag on",
-	        .Required    = true,
-	    },
-	    value
-	);
+	auto opt = Option<bool>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	    .Required    = true,
+	}};
 	opt.Parse(std::nullopt);
-	EXPECT_TRUE(value);
+	EXPECT_TRUE(opt.value);
 
 	opt.Parse("false");
-	EXPECT_FALSE(value);
+	EXPECT_FALSE(opt.value);
 
 	opt.Parse("true");
-	EXPECT_TRUE(value);
+	EXPECT_TRUE(opt.value);
 
 	try {
 		opt.Parse("foo");
@@ -62,16 +56,13 @@ TEST_F(OptionTest, BoolParsing) {
 }
 
 TEST_F(OptionTest, BoolFormatting) {
-	bool value{false};
-	auto opt = Option<bool>(
-	    {
-	        .ShortFlag   = 0,
-	        .Name        = "my-flag",
-	        .Description = "turn my flag on",
-	        .Required    = true,
-	    },
-	    value
-	);
+	auto opt = Option<bool>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	    .Required    = true,
+	}};
+
 	std::ostringstream out;
 	out << std::noboolalpha;
 	opt.Format(out);
@@ -80,21 +71,28 @@ TEST_F(OptionTest, BoolFormatting) {
 	EXPECT_EQ(out.flags() & std::ios_base::boolalpha, 0);
 }
 
-TEST_F(OptionTest, IntParsing) {
-	int  value{25};
-	auto opt = Option<int>(
-	    {
-	        .ShortFlag   = 0,
-	        .Name        = "my-flag",
-	        .Description = "turn my flag on",
-	    },
-	    value
-	);
-	EXPECT_EQ(value, 25);
+TEST_F(OptionTest, IntHaveDefaultArguments) {
+	auto opt = Option<int>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
+	EXPECT_EQ(opt.value, 0);
 	ASSERT_EQ(opt.NumArgs(), 1);
+	EXPECT_TRUE(opt.Required());
+	opt.SetDefault(0);
+	EXPECT_FALSE(opt.Required());
+}
+
+TEST_F(OptionTest, IntParsing) {
+	auto opt = Option<int>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
 
 	opt.Parse("42");
-	EXPECT_EQ(value, 42);
+	EXPECT_EQ(opt.value, 42);
 
 	try {
 		opt.Parse("foo");
@@ -112,39 +110,44 @@ TEST_F(OptionTest, IntParsing) {
 }
 
 TEST_F(OptionTest, IntFormatting) {
-	int  value{23};
-	auto opt = Option<int>(
-	    {
-	        .ShortFlag   = 0,
-	        .Name        = "my-flag",
-	        .Description = "turn my flag on",
-	        .Required    = true,
-	    },
-	    value
-	);
+	auto opt  = Option<int>{{
+	     .ShortFlag   = 0,
+	     .Name        = "my-flag",
+	     .Description = "turn my flag on",
+	     .Required    = true,
+    }};
+	opt.value = 23;
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "23");
 }
 
+TEST_F(OptionTest, FloatHaveDefaultArguments) {
+	auto opt = Option<float>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
+	EXPECT_EQ(opt.value, 0.0);
+	ASSERT_EQ(opt.NumArgs(), 1);
+	EXPECT_TRUE(opt.Required());
+	opt.SetDefault(0.0);
+	EXPECT_FALSE(opt.Required());
+}
+
 TEST_F(OptionTest, FloatParsing) {
-	float value{1.0};
-	auto  opt = Option<float>(
-        {
-	         .ShortFlag   = 0,
-	         .Name        = "my-flag",
-	         .Description = "turn my flag on",
-        },
-        value
-    );
-	EXPECT_FLOAT_EQ(value, 1.0);
+	auto opt = Option<float>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
 	ASSERT_EQ(opt.NumArgs(), 1);
 
 	opt.Parse("42");
-	EXPECT_FLOAT_EQ(value, 42.0);
+	EXPECT_FLOAT_EQ(opt.value, 42.0);
 
 	opt.Parse("-1e-4");
-	EXPECT_FLOAT_EQ(value, -1e-4);
+	EXPECT_FLOAT_EQ(opt.value, -1e-4);
 
 	try {
 		opt.Parse("foo");
@@ -162,39 +165,43 @@ TEST_F(OptionTest, FloatParsing) {
 }
 
 TEST_F(OptionTest, FloatFormatting) {
-	float value{23.0};
-	auto  opt = Option<float>(
-        {
-	         .ShortFlag   = 0,
-	         .Name        = "my-flag",
-	         .Description = "turn my flag on",
-	         .Required    = true,
-        },
-        value
-    );
+	auto opt  = Option<float>{{
+	     .ShortFlag   = 0,
+	     .Name        = "my-flag",
+	     .Description = "turn my flag on",
+	     .Required    = true,
+    }};
+	opt.value = 23;
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "23");
 }
 
-TEST_F(OptionTest, StringParsing) {
-	std::string value{"something"};
-	auto        opt = Option<std::string>(
-        {
-	               .ShortFlag   = 0,
-	               .Name        = "my-flag",
-	               .Description = "turn my flag on",
-        },
-        value
-    );
+TEST_F(OptionTest, StringHaveDefaultArguments) {
+	auto opt = Option<std::string>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
+	EXPECT_EQ(opt.value, "");
 	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_EQ(value, "something");
+	EXPECT_TRUE(opt.Required());
+	opt.SetDefault("");
+	EXPECT_FALSE(opt.Required());
+}
+
+TEST_F(OptionTest, StringParsing) {
+	auto opt = Option<std::string>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
 
 	opt.Parse("the lazy dog jumps over the brown fox.");
-	EXPECT_EQ(value, "the lazy dog jumps over the brown fox.");
+	EXPECT_EQ(opt.value, "the lazy dog jumps over the brown fox.");
 
 	opt.Parse("");
-	EXPECT_EQ(value, "");
+	EXPECT_EQ(opt.value, "");
 
 	try {
 		opt.Parse(std::nullopt);
@@ -205,16 +212,14 @@ TEST_F(OptionTest, StringParsing) {
 }
 
 TEST_F(OptionTest, StringFormatting) {
-	std::string value{"The quick brown fox jumps over the lazy dog."};
-	auto        opt = Option<std::string>(
-        {
-	               .ShortFlag   = 0,
-	               .Name        = "my-flag",
-	               .Description = "turn my flag on",
-	               .Required    = true,
-        },
-        value
-    );
+
+	auto opt  = Option<std::string>{{
+	     .ShortFlag   = 0,
+	     .Name        = "my-flag",
+	     .Description = "turn my flag on",
+	     .Required    = true,
+    }};
+	opt.value = "The quick brown fox jumps over the lazy dog.";
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "The quick brown fox jumps over the lazy dog.");
@@ -308,28 +313,37 @@ std::istream &operator>>(std::istream &in, Duration &value) {
 	return in;
 }
 
-TEST_F(OptionTest, CustomParsing) {
-	Duration value{12345};
-	auto     opt = Option<Duration>(
-        {
-	            .ShortFlag   = 0,
-	            .Name        = "my-flag",
-	            .Description = "turn my flag on",
-        },
-        value
-    );
-	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_EQ(value, Duration{12345});
+TEST_F(OptionTest, CustomHaveDefaultValues) {
+	auto opt = Option<Duration>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
+	// We do not expect a value for custom type. should be handled by the class
+	// itself.
+	// EXPECT_EQ(opt.value, std::chrono::hours{0});
 
+	ASSERT_EQ(opt.NumArgs(), 1);
+	EXPECT_TRUE(opt.Required());
+	opt.SetDefault(Duration(12340));
+	EXPECT_FALSE(opt.Required());
+}
+
+TEST_F(OptionTest, CustomParsing) {
+	auto opt = Option<Duration>{{
+	    .ShortFlag   = 0,
+	    .Name        = "my-flag",
+	    .Description = "turn my flag on",
+	}};
 	opt.Parse("23.3ms");
-	EXPECT_EQ(value, Duration{int64_t(233e5)});
+	EXPECT_EQ(opt.value, Duration{int64_t(233e5)});
 
 	opt.Parse("4us");
-	EXPECT_EQ(value, Duration{int64_t(4000)});
+	EXPECT_EQ(opt.value, Duration{int64_t(4000)});
 
 	opt.Parse("1h0m0s");
 	EXPECT_EQ(
-	    value,
+	    opt.value,
 	    std::chrono::duration_cast<Duration>(std::chrono::hours{1})
 	);
 
@@ -342,76 +356,66 @@ TEST_F(OptionTest, CustomParsing) {
 }
 
 TEST_F(OptionTest, CustomFomrating) {
-	Duration value{12340};
-	auto     opt = Option<Duration>(
-        {
-	            .ShortFlag   = 0,
-	            .Name        = "my-flag",
-	            .Description = "turn my flag on",
-        },
-        value
-    );
+	auto opt  = Option<Duration>{{
+	     .ShortFlag   = 0,
+	     .Name        = "my-flag",
+	     .Description = "turn my flag on",
+    }};
+	opt.value = Duration(12340);
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "12.340us");
 }
 
 TEST_F(OptionTest, RepeatableParsing) {
-	std::vector<Duration> value{
-	    std::chrono::hours{2},
-	};
 
-	auto opt = RepeatableOption<Duration>{
-	    {
-	        .Name = "my-flag",
-	    },
-	    value,
-	};
+	auto opt = RepeatableOption<Duration>{{
+	    .Name = "my-flag",
+	}};
 
-	EXPECT_FALSE(value.empty());
+	EXPECT_TRUE(opt.value.empty());
+
+	opt.SetDefault({std::chrono::hours{2}});
 
 	opt.Parse("12us");
 	opt.Parse("40ms");
 	opt.Parse("2s");
-	ASSERT_EQ(value.size(), 4);
+	ASSERT_EQ(opt.value.size(), 4);
 	EXPECT_EQ(
-	    value[0],
+	    opt.value[0],
 	    std::chrono::duration_cast<Duration>(std::chrono::hours{2})
 	);
 
 	EXPECT_EQ(
-	    value[1],
+	    opt.value[1],
 	    std::chrono::duration_cast<Duration>(std::chrono::microseconds{12})
 	);
 	EXPECT_EQ(
-	    value[2],
+	    opt.value[2],
 	    std::chrono::duration_cast<Duration>(std::chrono::milliseconds{40})
 	);
 	EXPECT_EQ(
-	    value[3],
+	    opt.value[3],
 	    std::chrono::duration_cast<Duration>(std::chrono::seconds{2})
 	);
 }
 
 TEST_F(OptionTest, RepeatableFormatting) {
-	std::vector<Duration> value{
+	auto opt  = RepeatableOption<Duration>{{
+	     .Name = "my-flag",
+    }};
+	opt.value = {
 	    std::chrono::microseconds{12},
 	    std::chrono::milliseconds{40},
 	    std::chrono::seconds{2},
 	};
 
-	auto opt = RepeatableOption<Duration>{
-	    {
-	        .Name = "my-flag",
-	    },
-	    value,
-	};
 	{
 		std::ostringstream out;
 		opt.Format(out);
 		EXPECT_EQ(out.str(), "[12.000us, 40.000ms, 2.000s]");
 	}
-	value.clear();
+	opt.value.clear();
 
 	{
 		std::ostringstream out;
@@ -420,6 +424,69 @@ TEST_F(OptionTest, RepeatableFormatting) {
 	}
 }
 
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+
+enum class MyEnum {
+	NONE = 0,
+	SOME = 1,
+	ALL  = 2,
+};
+
+TEST_F(OptionTest, EnumDefaultValue) {
+	auto opt = Option<MyEnum>{
+	    {
+	        .Name = "my-flag",
+	    },
+	};
+	// set to the first enum
+	EXPECT_EQ(opt.value, MyEnum::NONE);
+	EXPECT_TRUE(opt.Required());
+	EXPECT_FALSE(opt.Repeatable());
+}
+
+TEST_F(OptionTest, EnumParsing) {
+	auto opt = Option<MyEnum>{
+	    {
+	        .Name = "my-flag",
+	    },
+	};
+	// set to the first enum
+	EXPECT_NO_THROW(opt.Parse("SOME"));
+	EXPECT_EQ(opt.value, MyEnum::SOME);
+
+	try {
+		opt.Parse("foo");
+		ADD_FAILURE() << "Should have thrown an exception, it doesn't";
+	} catch (const ParseEnumError<MyEnum> &e) {
+		EXPECT_STREQ(
+		    e.what(),
+		    "could not parse my-flag='foo': possible enum values are ['NONE', "
+		    "'SOME', 'ALL']"
+		);
+	}
+}
+
+TEST_F(OptionTest, EnumFormating) {
+	auto opt = Option<MyEnum>{
+	    {
+	        .Name = "my-flag",
+	    },
+	};
+
+	{
+		std::ostringstream out;
+		opt.Format(out);
+		EXPECT_EQ(out.str(), "NONE");
+	}
+	opt.value = MyEnum::ALL;
+	{
+		std::ostringstream out;
+		opt.Format(out);
+		EXPECT_EQ(out.str(), "ALL");
+	}
+}
+
+#endif
 } // namespace details
 } // namespace options
 } // namespace fort

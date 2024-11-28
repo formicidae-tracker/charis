@@ -4,6 +4,12 @@
 #include <ostream>
 #include <type_traits>
 
+#include "config.hpp"
+
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+#include <magic_enum/magic_enum.hpp>
+#endif
+
 namespace fort {
 namespace options {
 namespace details {
@@ -25,10 +31,17 @@ private:
 	template <typename>
 	constexpr static auto test_deserializable(...) -> std::false_type;
 
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+	constexpr static bool is_supported_enum = std::is_enum<T>::value;
+#else
+	constexpr static bool is_supported_enum = false;
+#endif
+
 public:
 	constexpr static bool value =
-	    decltype(test_deserializable<T>(nullptr))::value &&
-	    decltype(test_serializable<T>(nullptr))::value;
+	    is_supported_enum ||
+	    (decltype(test_deserializable<T>(nullptr))::value &&
+	     decltype(test_serializable<T>(nullptr))::value);
 };
 
 template <> struct is_optionable<char> { constexpr static bool value = false; };

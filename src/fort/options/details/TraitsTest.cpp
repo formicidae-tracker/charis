@@ -25,6 +25,12 @@ std::istream &operator>>(std::istream &in, const Both &) {
 	return in;
 }
 
+enum class MyEnum {
+	NONE = 0,
+	SOME = 1,
+	ALL  = 2,
+};
+
 namespace fort {
 namespace options {
 namespace details {
@@ -66,6 +72,13 @@ TEST_F(TraitsTest, Specialization) {
 	EXPECT_FALSE((is_specialization_v<int, std::list>));
 }
 
+TEST_F(TraitsTest, Enum) {
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+	EXPECT_TRUE(is_optionable_v<MyEnum>);
+#else
+	EXPECT_FALSE(is_optionable_v<MyEnum>);
+#endif
+}
 } // namespace details
 } // namespace options
 } // namespace fort

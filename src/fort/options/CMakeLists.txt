@@ -4,9 +4,20 @@ set(TEST_SRC_FILES #
 	details/TraitsTest.cpp
 )
 
+set(HDR_FILES
+	Options.hpp #
+	details/Option.hpp #
+	details/Traits.hpp #
+	details/config.hpp
+)
+
 add_library(fort-options INTERFACE)
 add_library(fort-charis::libfort-options ALIAS fort-options)
 target_include_directories(fort-options INTERFACE ${PROJECT_SOURCE_DIR}/src)
+
+if(FORT_CHARIS_USE_MAGIC_ENUM)
+	target_link_libraries(fort-options INTERFACE magic_enum::magic_enum)
+endif(FORT_CHARIS_USE_MAGIC_ENUM)
 
 if(NOT CHARIS_IMPORTED)
 
