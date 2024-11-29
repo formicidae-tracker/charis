@@ -68,10 +68,11 @@ public:
 		for (const auto &[flag, opt] : res.d_shortFlags.value()) {
 			if (opt->Name.size() != 0) {
 				throw std::invalid_argument{
-				    "subgroup option '" + name + "." + opt->Name +
+				    "subgroup '" + name + "' option '" + opt->Name +
 				    " cannot have short flag '" + std::string(1, flag) + "'"};
 			}
-			opt->Name = std::string(1, flag);
+			opt->ShortFlag = 0;
+			opt->Name      = std::string(1, flag);
 			res.d_longFlags.insert({opt->Name, opt});
 		}
 

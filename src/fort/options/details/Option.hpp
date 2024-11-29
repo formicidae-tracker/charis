@@ -159,18 +159,18 @@ public:
 	          .Repeatable  = false,
 	      }} {
 		if (implicit.has_value()) {
-			this->value = implicit.value();
+			this->Value = implicit.value();
 			return;
 		}
 
 		if constexpr (std::is_fundamental_v<T>) {
-			value = 0;
+			Value = 0;
 		}
 
 #ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
 		if constexpr (std::is_enum_v<T>) {
 			if constexpr (magic_enum::enum_count<T>() > 0) {
-				value = magic_enum::enum_values<T>()[0];
+				Value = magic_enum::enum_values<T>()[0];
 			}
 		}
 #endif
@@ -180,27 +180,27 @@ public:
 		if (this->NumArgs > 0 && value.has_value() == false) {
 			throw ParseError{this->Name, ""};
 		}
-		OptionBase::Parse<T>(value.value_or(""), this->value);
+		OptionBase::Parse<T>(value.value_or(""), this->Value);
 	}
 
 	void Format(std::ostream &out) const override {
-		OptionBase::Format<T>(out, value);
+		OptionBase::Format<T>(out, Value);
 	}
 
 	Option &SetDefault(const T &value) {
 		this->Required = false;
-		this->value    = value;
+		this->Value    = value;
 		return *this;
 	}
 
 	operator T &() {
-		return value;
+		return Value;
 	}
 
 	template <typename U> operator U() {}
 
-	T value;
-	};
+	T Value;
+    };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class RepeatableOption : public OptionBase {

@@ -25,7 +25,7 @@ TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 	        .Required    = true,
 	    },
 	};
-	EXPECT_FALSE(opt.value);
+	EXPECT_FALSE(opt.Value);
 	EXPECT_FALSE(opt.Required);
 	EXPECT_FALSE(opt.Repeatable);
 	EXPECT_EQ(opt.NumArgs, 0);
@@ -39,13 +39,13 @@ TEST_F(OptionTest, BoolParsing) {
 	    .Required    = true,
 	}};
 	opt.Parse(std::nullopt);
-	EXPECT_TRUE(opt.value);
+	EXPECT_TRUE(opt.Value);
 
 	opt.Parse("false");
-	EXPECT_FALSE(opt.value);
+	EXPECT_FALSE(opt.Value);
 
 	opt.Parse("true");
-	EXPECT_TRUE(opt.value);
+	EXPECT_TRUE(opt.Value);
 
 	try {
 		opt.Parse("foo");
@@ -77,7 +77,7 @@ TEST_F(OptionTest, IntHaveDefaultArguments) {
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
-	EXPECT_EQ(opt.value, 0);
+	EXPECT_EQ(opt.Value, 0);
 	ASSERT_EQ(opt.NumArgs, 1);
 	EXPECT_TRUE(opt.Required);
 	opt.SetDefault(0);
@@ -92,7 +92,7 @@ TEST_F(OptionTest, IntParsing) {
 	}};
 
 	opt.Parse("42");
-	EXPECT_EQ(opt.value, 42);
+	EXPECT_EQ(opt.Value, 42);
 
 	try {
 		opt.Parse("foo");
@@ -116,7 +116,7 @@ TEST_F(OptionTest, IntFormatting) {
 	     .Description = "turn my flag on",
 	     .Required    = true,
     }};
-	opt.value = 23;
+	opt.Value = 23;
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "23");
@@ -128,7 +128,7 @@ TEST_F(OptionTest, FloatHaveDefaultArguments) {
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
-	EXPECT_EQ(opt.value, 0.0);
+	EXPECT_EQ(opt.Value, 0.0);
 	ASSERT_EQ(opt.NumArgs, 1);
 	EXPECT_TRUE(opt.Required);
 	opt.SetDefault(0.0);
@@ -144,10 +144,10 @@ TEST_F(OptionTest, FloatParsing) {
 	ASSERT_EQ(opt.NumArgs, 1);
 
 	opt.Parse("42");
-	EXPECT_FLOAT_EQ(opt.value, 42.0);
+	EXPECT_FLOAT_EQ(opt.Value, 42.0);
 
 	opt.Parse("-1e-4");
-	EXPECT_FLOAT_EQ(opt.value, -1e-4);
+	EXPECT_FLOAT_EQ(opt.Value, -1e-4);
 
 	try {
 		opt.Parse("foo");
@@ -171,7 +171,7 @@ TEST_F(OptionTest, FloatFormatting) {
 	     .Description = "turn my flag on",
 	     .Required    = true,
     }};
-	opt.value = 23;
+	opt.Value = 23;
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "23");
@@ -183,7 +183,7 @@ TEST_F(OptionTest, StringHaveDefaultArguments) {
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
-	EXPECT_EQ(opt.value, "");
+	EXPECT_EQ(opt.Value, "");
 	ASSERT_EQ(opt.NumArgs, 1);
 	EXPECT_TRUE(opt.Required);
 	opt.SetDefault("");
@@ -198,10 +198,10 @@ TEST_F(OptionTest, StringParsing) {
 	}};
 
 	opt.Parse("the lazy dog jumps over the brown fox.");
-	EXPECT_EQ(opt.value, "the lazy dog jumps over the brown fox.");
+	EXPECT_EQ(opt.Value, "the lazy dog jumps over the brown fox.");
 
 	opt.Parse("");
-	EXPECT_EQ(opt.value, "");
+	EXPECT_EQ(opt.Value, "");
 
 	try {
 		opt.Parse(std::nullopt);
@@ -219,7 +219,7 @@ TEST_F(OptionTest, StringFormatting) {
 	     .Description = "turn my flag on",
 	     .Required    = true,
     }};
-	opt.value = "The quick brown fox jumps over the lazy dog.";
+	opt.Value = "The quick brown fox jumps over the lazy dog.";
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "The quick brown fox jumps over the lazy dog.");
@@ -336,14 +336,14 @@ TEST_F(OptionTest, CustomParsing) {
 	    .Description = "turn my flag on",
 	}};
 	opt.Parse("23.3ms");
-	EXPECT_EQ(opt.value, Duration{int64_t(233e5)});
+	EXPECT_EQ(opt.Value, Duration{int64_t(233e5)});
 
 	opt.Parse("4us");
-	EXPECT_EQ(opt.value, Duration{int64_t(4000)});
+	EXPECT_EQ(opt.Value, Duration{int64_t(4000)});
 
 	opt.Parse("1h0m0s");
 	EXPECT_EQ(
-	    opt.value,
+	    opt.Value,
 	    std::chrono::duration_cast<Duration>(std::chrono::hours{1})
 	);
 
@@ -361,7 +361,7 @@ TEST_F(OptionTest, CustomFomrating) {
 	     .Name        = "my-flag",
 	     .Description = "turn my flag on",
     }};
-	opt.value = Duration(12340);
+	opt.Value = Duration(12340);
 	std::ostringstream out;
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "12.340us");
@@ -439,7 +439,7 @@ TEST_F(OptionTest, EnumDefaultValue) {
 	    },
 	};
 	// set to the first enum
-	EXPECT_EQ(opt.value, MyEnum::NONE);
+	EXPECT_EQ(opt.Value, MyEnum::NONE);
 	EXPECT_TRUE(opt.Required);
 	EXPECT_FALSE(opt.Repeatable);
 }
@@ -452,7 +452,7 @@ TEST_F(OptionTest, EnumParsing) {
 	};
 	// set to the first enum
 	EXPECT_NO_THROW(opt.Parse("SOME"));
-	EXPECT_EQ(opt.value, MyEnum::SOME);
+	EXPECT_EQ(opt.Value, MyEnum::SOME);
 
 	try {
 		opt.Parse("foo");
@@ -478,7 +478,7 @@ TEST_F(OptionTest, EnumFormating) {
 		opt.Format(out);
 		EXPECT_EQ(out.str(), "NONE");
 	}
-	opt.value = MyEnum::ALL;
+	opt.Value = MyEnum::ALL;
 	{
 		std::ostringstream out;
 		opt.Format(out);

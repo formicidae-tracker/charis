@@ -68,7 +68,7 @@ inline std::vector<ArgToken> lexArguments(int argc, const char **argv) {
 			}
 			continue;
 		}
-		const static std::regex flagRx{"[a-zA-Z][a-zA-Z\\-_0-9\\.]+"};
+		const static std::regex flagRx{"[a-zA-Z][a-zA-Z\\-_0-9\\.]*"};
 
 		if (arg.size() == 2) {
 			res.emplace_back(ArgToken{.Type = TokenType::IDENTIFIER});
