@@ -9,9 +9,9 @@ namespace options {
 class OptionsTest : public ::testing::Test {
 protected:
 	struct PID : public Group {
-		float &K = AddOption<float>("K_gain", "Proportional gain");
-		float &I = AddOption<float>("I_gain", "Integral gain");
-		float &D = AddOption<float>("D_gain", "Derivative gain");
+		float &K = AddOption<float>("K", "Proportional gain");
+		float &I = AddOption<float>("I", "Integral gain");
+		float &D = AddOption<float>("D", "Derivative gain");
 	};
 
 	struct Opts : public Group {
@@ -22,7 +22,21 @@ protected:
 	};
 };
 
-TEST_F(OptionsTest, SetValues) {}
+TEST_F(OptionsTest, SetValues) {
+	Opts opts;
+
+	EXPECT_NO_THROW({
+		opts.Set("t", "1");
+		opts.Set("threshold", "2");
+		opts.Set("pid.K", "3");
+		opts.Set("pid.I", "4");
+		opts.Set("pid.D", "5");
+	});
+	EXPECT_EQ(opts.threshold, 2);
+	EXPECT_FLOAT_EQ(opts.pid.K, 3);
+	EXPECT_FLOAT_EQ(opts.pid.I, 4);
+	EXPECT_FLOAT_EQ(opts.pid.D, 5);
+}
 
 TEST_F(OptionsTest, NameChecking) {
 

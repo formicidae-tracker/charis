@@ -20,7 +20,9 @@ class Group {
 public:
 	Group()
 	    : d_parent{std::nullopt}
-	    , d_shortFlags{ValuesByShort{}} {}
+	    , d_shortFlags{ValuesByShort{}} {
+		std::cerr << "Created group " << this << std::endl;
+	}
 
 	virtual ~Group() = default;
 
@@ -50,7 +52,8 @@ public:
 		auto opt = std::make_shared<details::RepeatableOption<T>>(
 		    checkArgs(designator, description)
 		);
-		return pushOption(opt);
+		pushOption(opt);
+		return *opt;
 	}
 
 	template <
@@ -63,8 +66,8 @@ public:
 		}
 
 		T &res =
-		    *(d_subgroups.insert({name, std::make_unique<T>()}).first->second);
-
+		    *static_cast<T *>(d_subgroups.insert({name, std::make_unique<T>()})
+		                          .first->second.get());
 		for (const auto &[flag, opt] : res.d_shortFlags.value()) {
 			if (opt->Name.size() != 0) {
 				throw std::invalid_argument{
@@ -101,11 +104,13 @@ public:
 		}
 
 		auto pos = name.find('.');
-		if (pos == std::string::npos) {
+		if (pos != std::string::npos) {
 			auto subgroupName = name.substr(0, pos);
 			auto subgroup     = d_subgroups.find(subgroupName);
 			if (subgroup == d_subgroups.end()) {
-				throw std::out_of_range{"unknown option '" + name + "'"};
+				throw std::out_of_range{
+				    "unknown option '" + name + "': unknown subgroup '" +
+				    subgroupName + "'"};
 			}
 			subgroup->second->Set(name.substr(pos + 1), value);
 			return;
@@ -185,15 +190,14 @@ private:
 	}
 
 	template <typename T>
-	details::Option<T> &pushOption(std::shared_ptr<details::Option<T>> option) {
+	void pushOption(std::shared_ptr<details::Option<T>> option) {
 		if (option->Name.size() > 0) {
+			std::cerr << "adding option '" << option->Name << "'" << std::endl;
 			d_longFlags[option->Name] = option;
 		}
 		if (option->ShortFlag != 0) {
 			d_shortFlags.value().insert({option->ShortFlag, option});
 		}
-
-		return *option;
 	}
 
 	std::string d_name;
