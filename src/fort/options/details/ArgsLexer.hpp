@@ -12,8 +12,9 @@ namespace options {
 namespace details {
 
 enum class TokenType {
-	IDENTIFIER = 0,
-	VALUE      = 1,
+	IDENTIFIER            = 0,
+	VALUE                 = 1,
+	IDENTIFIER_WITH_VALUE = 2,
 };
 
 struct ArgToken {
@@ -21,7 +22,7 @@ struct ArgToken {
 	std::string Value;
 };
 
-inline std::vector<ArgToken> lexArguments(int argc, const char **argv) {
+inline std::vector<ArgToken> lexArguments(int argc, char **argv) {
 
 	constexpr static auto invalid_flag = [](const std::string &flag,
 	                                        int                pos,
@@ -103,7 +104,8 @@ inline std::vector<ArgToken> lexArguments(int argc, const char **argv) {
 			    "invalid long flag name '" + ident + "'"
 			);
 		}
-		res.emplace_back(ArgToken{.Type = TokenType::IDENTIFIER, .Value = ident}
+		res.emplace_back(
+		    ArgToken{.Type = TokenType::IDENTIFIER_WITH_VALUE, .Value = ident}
 		);
 		res.emplace_back(ArgToken{
 		    .Type  = TokenType::VALUE,

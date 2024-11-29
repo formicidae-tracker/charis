@@ -62,6 +62,17 @@ TEST_F(OptionsTest, NameChecking) {
 	    std::invalid_argument,
 	    "option 'anInt' already specified"
 	);
+
+	struct Help : public Group {
+		bool &help =
+		    AddOption<bool>("h,help", "display this help").SetDefault(42);
+	};
+
+	EXPECT_STDEXCEPT(
+	    Help{},
+	    std::invalid_argument,
+	    "-h/--help flag is reserved"
+	);
 }
 
 } // namespace options

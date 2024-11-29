@@ -19,10 +19,8 @@ class OptionTest : public testing::Test {};
 TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 	auto opt = Option<bool>{
 	    {
-	        .ShortFlag   = 0,
 	        .Name        = "my-flag",
 	        .Description = "turn my flag on",
-	        .Required    = true,
 	    },
 	};
 	EXPECT_FALSE(opt.Value);
@@ -33,10 +31,8 @@ TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 
 TEST_F(OptionTest, BoolParsing) {
 	auto opt = Option<bool>{{
-	    .ShortFlag   = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
-	    .Required    = true,
 	}};
 	opt.Parse(std::nullopt);
 	EXPECT_TRUE(opt.Value);
@@ -57,10 +53,9 @@ TEST_F(OptionTest, BoolParsing) {
 
 TEST_F(OptionTest, BoolFormatting) {
 	auto opt = Option<bool>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
-	    .Required    = true,
 	}};
 
 	std::ostringstream out;
@@ -73,7 +68,7 @@ TEST_F(OptionTest, BoolFormatting) {
 
 TEST_F(OptionTest, IntHaveDefaultArguments) {
 	auto opt = Option<int>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -86,7 +81,7 @@ TEST_F(OptionTest, IntHaveDefaultArguments) {
 
 TEST_F(OptionTest, IntParsing) {
 	auto opt = Option<int>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -111,10 +106,8 @@ TEST_F(OptionTest, IntParsing) {
 
 TEST_F(OptionTest, IntFormatting) {
 	auto opt  = Option<int>{{
-	     .ShortFlag   = 0,
 	     .Name        = "my-flag",
 	     .Description = "turn my flag on",
-	     .Required    = true,
     }};
 	opt.Value = 23;
 	std::ostringstream out;
@@ -124,7 +117,7 @@ TEST_F(OptionTest, IntFormatting) {
 
 TEST_F(OptionTest, FloatHaveDefaultArguments) {
 	auto opt = Option<float>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -137,7 +130,7 @@ TEST_F(OptionTest, FloatHaveDefaultArguments) {
 
 TEST_F(OptionTest, FloatParsing) {
 	auto opt = Option<float>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -166,10 +159,8 @@ TEST_F(OptionTest, FloatParsing) {
 
 TEST_F(OptionTest, FloatFormatting) {
 	auto opt  = Option<float>{{
-	     .ShortFlag   = 0,
 	     .Name        = "my-flag",
 	     .Description = "turn my flag on",
-	     .Required    = true,
     }};
 	opt.Value = 23;
 	std::ostringstream out;
@@ -179,7 +170,7 @@ TEST_F(OptionTest, FloatFormatting) {
 
 TEST_F(OptionTest, StringHaveDefaultArguments) {
 	auto opt = Option<std::string>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -192,7 +183,7 @@ TEST_F(OptionTest, StringHaveDefaultArguments) {
 
 TEST_F(OptionTest, StringParsing) {
 	auto opt = Option<std::string>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -214,10 +205,8 @@ TEST_F(OptionTest, StringParsing) {
 TEST_F(OptionTest, StringFormatting) {
 
 	auto opt  = Option<std::string>{{
-	     .ShortFlag   = 0,
 	     .Name        = "my-flag",
 	     .Description = "turn my flag on",
-	     .Required    = true,
     }};
 	opt.Value = "The quick brown fox jumps over the lazy dog.";
 	std::ostringstream out;
@@ -315,7 +304,6 @@ std::istream &operator>>(std::istream &in, Duration &value) {
 
 TEST_F(OptionTest, CustomHaveDefaultValues) {
 	auto opt = Option<Duration>{{
-	    .ShortFlag   = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -331,7 +319,7 @@ TEST_F(OptionTest, CustomHaveDefaultValues) {
 
 TEST_F(OptionTest, CustomParsing) {
 	auto opt = Option<Duration>{{
-	    .ShortFlag   = 0,
+	    .Flag        = 0,
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
@@ -356,11 +344,10 @@ TEST_F(OptionTest, CustomParsing) {
 }
 
 TEST_F(OptionTest, CustomFomrating) {
-	auto opt  = Option<Duration>{{
-	     .ShortFlag   = 0,
+	auto opt  = Option<Duration>({
 	     .Name        = "my-flag",
 	     .Description = "turn my flag on",
-    }};
+    });
 	opt.Value = Duration(12340);
 	std::ostringstream out;
 	opt.Format(out);

@@ -19,7 +19,7 @@ namespace options {
 namespace details {
 
 struct OptionData {
-	char        ShortFlag;
+	char        Flag;
 	std::string Name, Description;
 	size_t      NumArgs = 1;
 	bool        Required;
@@ -140,10 +140,9 @@ inline void OptionBase::Parse<bool>(const std::string &value, bool &res) const {
 }
 
 struct OptionArgs {
-	char        ShortFlag;
+	char        Flag = 0;
 	std::string Name;
 	std::string Description;
-	bool        Required;
 };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
@@ -151,7 +150,7 @@ class Option : public OptionBase {
 public:
 	Option(OptionArgs &&args, std::optional<T> implicit = std::nullopt)
 	    : OptionBase{{
-	          .ShortFlag   = args.ShortFlag,
+	          .Flag        = args.Flag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
 	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
@@ -207,7 +206,7 @@ class RepeatableOption : public OptionBase {
 public:
 	RepeatableOption(OptionArgs &&args)
 	    : OptionBase{{
-	          .ShortFlag   = args.ShortFlag,
+	          .Flag        = args.Flag,
 	          .Name        = args.Name,
 	          .Description = args.Description,
 	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
