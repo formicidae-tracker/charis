@@ -1,14 +1,15 @@
 #pragma once
 
-#include "fort/options/details/ArgsLexer.hpp"
 #include <map>
 #include <memory>
 #include <optional>
+#include <ostream>
 #include <regex>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 
+#include <fort/options/details/ArgsLexer.hpp>
 #include <fort/options/details/Designator.hpp>
 #include <fort/options/details/Option.hpp>
 #include <fort/options/details/Traits.hpp>
@@ -21,7 +22,12 @@ class Group {
 public:
 	Group()
 	    : d_parent{std::nullopt}
-	    , d_flags{ValuesByShort{}} {
+	    , d_flags{ValuesByShort{}}
+	    , d_help{std::make_shared<details::Option<bool>>(details::OptionArgs{
+	          .Flag        = 'h',
+	          .Name        = "help",
+	          .Description = "displays this help message",
+	      })} {
 		std::cerr << "Created group " << this << std::endl;
 	}
 
@@ -124,6 +130,21 @@ public:
 		opt->second->Parse(value);
 	}
 
+	void SetDescription(const std::string &description) {
+		if (d_parent.has_value()) {
+			throw std::logic_error{
+			    "description could only be set on the root group"};
+		}
+		d_description = description;
+	}
+
+	void SetName(const std::string &name) {
+		if (d_parent.has_value()) {
+			throw std::logic_error{"name could only be set on the root group"};
+		}
+		d_name = name;
+	}
+
 	void ParseArguments(int &argc, const char **argv) {
 		if (d_parent.has_value()) {
 			throw std::logic_error{"Only root group can parse arguments"};
@@ -146,6 +167,11 @@ public:
 				continue;
 			}
 
+			if (tokens[i].Value == "h" || tokens[i].Value == "help") {
+				FormatUsage(std::cerr);
+				exit(0);
+			}
+
 			OptionPtr opt = findOption(tokens[i].Value);
 			if (opt == nullptr) {
 				throw std::runtime_error{
@@ -163,6 +189,38 @@ public:
 		}
 	}
 
+	void FormatUsage(std::ostream &out, const std::string &nm = "") const {
+		if (d_parent.has_value() == false) {
+			out << "Usage:" << std::endl
+			    << d_name << " [OPTIONS]" << std::endl
+			    << std::endl;
+			if (d_description.empty() == false) {
+				out << d_description << std::endl << std::endl;
+			}
+			out << "Application Options:" << std::endl;
+		} else {
+			out << d_name << ":";
+			if (d_description.empty() == false) {
+				out << " " << d_description;
+			}
+			out << std::endl;
+		}
+
+		for (const auto &opt : d_inOrder) {
+			formatOption(out, opt, nm);
+		}
+
+		for (const auto &[name, subgroup] : d_subgroups) {
+			out << std::endl;
+			subgroup->FormatUsage(out, nm.empty() ? name : nm + "." + name);
+		}
+
+		if (d_parent.has_value() == false) {
+			out << std::endl << "Help Options:" << std::endl;
+			formatOption(out, d_help, "");
+		}
+	}
+
 	void ParseYAML(const std::string &filename) {
 		throw std::runtime_error("not yet implemented");
 	}
@@ -172,11 +230,51 @@ public:
 	}
 
 private:
-	using OptionPtr = std::shared_ptr<details::OptionBase>;
-	using GroupPtr  = std::unique_ptr<Group>;
+	constexpr static int COLUMN_SIZE = 20;
+	using OptionPtr                  = std::shared_ptr<details::OptionBase>;
+	using GroupPtr                   = std::unique_ptr<Group>;
 
 	using ValuesByShort = std::map<char, OptionPtr>;
 	using ValuesByLong  = std::map<std::string, OptionPtr>;
+
+	void formatOption(
+	    std::ostream &out, const OptionPtr &opt, const std::string &nm
+	) const {
+		out << "  ";
+		if (opt->Flag == 0) {
+			out << "    ";
+		} else {
+			out << "-" << opt->Flag << (opt->Name.empty() ? "  " : ", ");
+		}
+
+		if (opt->Name.empty()) {
+			out << std::string(COLUMN_SIZE - 6, ' ');
+		} else if (nm.empty()) {
+			size_t spaceSize =
+			    std::max(0, COLUMN_SIZE - 8 - int(opt->Name.size()));
+			out << "--" << opt->Name << std::string(spaceSize, ' ');
+		} else {
+			size_t spaceSize = std::max(
+			    0,
+			    COLUMN_SIZE - 9 - int(opt->Name.size()) - int(nm.size())
+			);
+			out << "--" << nm << "." << opt->Name
+			    << std::string(spaceSize, ' ');
+		}
+
+		if (opt->Description.empty()) {
+			return;
+		}
+		out << ": " << opt->Description;
+		if (opt->Required) {
+			out << " [required]";
+		} else if (opt->NumArgs != 0) {
+			out << " [default: ";
+			opt->Format(out);
+			out << "]";
+		}
+		out << std::endl;
+	}
 
 	OptionPtr findOption(const std::string &name) {
 		if (name.size() == 1 && d_flags.has_value()) {
@@ -237,12 +335,9 @@ private:
 		if (d_parent.has_value() || d_options.count("help") > 0) {
 			return;
 		}
-
-		AddOption<bool>("h,help", "display this help message");
 	}
 
-	template <typename T>
-	void pushOption(std::shared_ptr<details::Option<T>> option) {
+	void pushOption(OptionPtr option) {
 		if (option->Name.size() > 0) {
 			std::cerr << "adding option '" << option->Name << "'" << std::endl;
 			d_options[option->Name] = option;
@@ -250,6 +345,7 @@ private:
 		if (option->Flag != 0) {
 			d_flags.value().insert({option->Flag, option});
 		}
+		d_inOrder.push_back(option);
 	}
 
 	std::string d_name;
@@ -260,6 +356,9 @@ private:
 	std::optional<Group *>          d_parent;
 	std::optional<ValuesByShort>    d_flags;
 	std::map<std::string, GroupPtr> d_subgroups;
+
+	std::vector<OptionPtr> d_inOrder;
+	OptionPtr              d_help;
 };
 
 } // namespace options

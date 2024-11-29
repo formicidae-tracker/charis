@@ -1,6 +1,9 @@
 #include "fort/options/tests.hpp"
 #include <fort/options/Options.hpp>
-#include <gtest/gtest.h>
+
+#include <gmock/gmock.h>
+
+#include <sstream>
 #include <stdexcept>
 
 namespace fort {
@@ -15,12 +18,31 @@ protected:
 	};
 
 	struct Opts : public Group {
-		int &threshold =
-		    AddOption<int>("threshold,t", "an important threshold");
+		int &threshold = AddOption<int>("threshold,t", "an important threshold")
+		                     .SetDefault(10);
 
 		PID &pid = AddSubgroup<PID>("pid", "the pid to set");
 	};
+
+	const static std::string USAGE;
 };
+
+const std::string OptionsTest::USAGE = R"x(Usage:
+test [OPTIONS]
+
+Runs a PID
+
+Application Options:
+  -t, --threshold   : an important threshold [default: 10]
+
+pid: the pid to set
+      --pid.K       : Proportional gain [required]
+      --pid.I       : Integral gain [required]
+      --pid.D       : Derivative gain [required]
+
+Help Options:
+  -h, --help        : displays this help message
+)x";
 
 TEST_F(OptionsTest, SetValues) {
 	Opts opts;
@@ -36,6 +58,33 @@ TEST_F(OptionsTest, SetValues) {
 	EXPECT_FLOAT_EQ(opts.pid.K, 3);
 	EXPECT_FLOAT_EQ(opts.pid.I, 4);
 	EXPECT_FLOAT_EQ(opts.pid.D, 5);
+}
+
+TEST_F(OptionsTest, FormatUsage) {
+	Opts opts;
+	opts.SetDescription("Runs a PID");
+	opts.SetName("test");
+	std::ostringstream oss;
+	opts.FormatUsage(oss);
+
+	EXPECT_EQ(oss.str(), USAGE);
+}
+
+TEST_F(OptionsTest, HelpArgumentExits) {
+	Opts opts;
+	opts.SetDescription("Runs a PID");
+
+	const char *argv[] = {"tested", "-h"};
+	int         argc   = 2;
+
+	EXPECT_EXIT(
+	    { opts.ParseArguments(argc, argv); },
+	    testing::ExitedWithCode(0),
+	    ::testing::AllOf(
+	        ::testing::ContainsRegex("tested \\[OPTIONS\\]"),
+	        ::testing::ContainsRegex("Usage:")
+	    )
+	);
 }
 
 TEST_F(OptionsTest, NameChecking) {
