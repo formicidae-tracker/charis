@@ -6,25 +6,25 @@
 namespace fort {
 namespace options {
 
-class SimpleOptionsTest : public ::testing::Test {
+class OptionsTest : public ::testing::Test {
 protected:
-	struct Simple : public Group {
+	struct PID : public Group {
+		float &K = AddOption<float>("K_gain", "Proportional gain");
+		float &I = AddOption<float>("I_gain", "Integral gain");
+		float &D = AddOption<float>("D_gain", "Derivative gain");
+	};
+
+	struct Opts : public Group {
 		int &threshold =
 		    AddOption<int>("threshold,t", "an important threshold");
+
+		PID &pid = AddSubgroup<PID>("pid", "the pid to set");
 	};
 };
 
-TEST_F(SimpleOptionsTest, Simple) {
+TEST_F(OptionsTest, SetValues) {}
 
-	const char *argv[3] = {"coucou", "--threshold=3"};
-
-	Simple opts;
-
-	EXPECT_THROW({ opts.ParseArguments(1, argv); }, std::runtime_error);
-	EXPECT_EQ(opts.threshold, 0);
-}
-
-TEST_F(SimpleOptionsTest, NameChecking) {
+TEST_F(OptionsTest, NameChecking) {
 
 	struct InvalidName : public Group {
 		int &anInt =

@@ -19,11 +19,11 @@ namespace options {
 namespace details {
 
 struct OptionData {
-	std::optional<char> ShortFlag;
-	std::string         Name, Description;
-	size_t              NumArgs = 1;
-	bool                Required;
-	bool                Repeatable;
+	char        ShortFlag;
+	std::string Name, Description;
+	size_t      NumArgs = 1;
+	bool        Required;
+	bool        Repeatable;
 };
 
 class ParseError : public std::runtime_error {
@@ -66,7 +66,7 @@ private:
 };
 #endif
 
-class OptionBase : private OptionData {
+class OptionBase : public OptionData {
 public:
 	OptionBase(OptionData &&args)
 	    : OptionData{std::move(args)} {}
@@ -76,34 +76,6 @@ public:
 	virtual void Parse(const std::optional<std::string> &) = 0;
 	virtual void Format(std::ostream &out) const           = 0;
 
-	inline const std::string &Name() const noexcept {
-		return OptionData::Name;
-	}
-
-	inline const std::string &Description() const noexcept {
-		return OptionData::Description;
-	}
-
-	inline const std::optional<char> &Short() const noexcept {
-		return OptionData::ShortFlag;
-	}
-
-	bool Required() const noexcept {
-		return OptionData::Required;
-	}
-
-	bool Repeatable() const noexcept {
-		return OptionData::Repeatable;
-	}
-
-	size_t NumArgs() const noexcept {
-		return OptionData::NumArgs;
-	}
-
-	void SetRequired(bool required) noexcept {
-		this->OptionData::Required = required;
-	}
-
 protected:
 	template <typename T>
 	inline void Parse(const std::string &value, T &res) const {
@@ -111,7 +83,7 @@ protected:
 #ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
 			auto v = magic_enum::enum_cast<T>(value);
 			if (v.has_value() == false) {
-				throw ParseEnumError<T>{OptionData::Name, value};
+				throw ParseEnumError<T>{this->Name, value};
 			}
 			res = v.value();
 #else
@@ -124,7 +96,7 @@ protected:
 			std::istringstream iss(value);
 			iss >> res;
 			if (iss.fail()) {
-				throw ParseError{OptionData::Name, value};
+				throw ParseError{this->Name, value};
 			}
 		}
 	}
@@ -163,15 +135,15 @@ inline void OptionBase::Parse<bool>(const std::string &value, bool &res) const {
 	} else if (value == "false") {
 		res = false;
 	} else {
-		throw ParseError{Name(), value};
+		throw ParseError{Name, value};
 	}
 }
 
 struct OptionArgs {
-	std::optional<char> ShortFlag;
-	std::string         Name;
-	std::string         Description;
-	bool                Required;
+	char        ShortFlag;
+	std::string Name;
+	std::string Description;
+	bool        Required;
 };
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
@@ -202,11 +174,11 @@ public:
 			}
 		}
 #endif
-		}
+	}
 
 	void Parse(const std::optional<std::string> &value) override {
-		if (NumArgs() > 0 && value.has_value() == false) {
-			throw ParseError{Name(), ""};
+		if (this->NumArgs > 0 && value.has_value() == false) {
+			throw ParseError{this->Name, ""};
 		}
 		OptionBase::Parse<T>(value.value_or(""), this->value);
 	}
@@ -216,8 +188,8 @@ public:
 	}
 
 	Option &SetDefault(const T &value) {
-		SetRequired(false);
-		this->value = value;
+		this->Required = false;
+		this->value    = value;
 		return *this;
 	}
 
@@ -244,8 +216,8 @@ public:
 	      }} {}
 
 	void Parse(const std::optional<std::string> &value) override {
-		if (NumArgs() > 0 && value.has_value() == false) {
-			throw ParseError{Name(), ""};
+		if (this->NumArgs > 0 && value.has_value() == false) {
+			throw ParseError{this->Name, ""};
 		}
 
 		OptionBase::Parse<T>(value.value_or(""), this->value.emplace_back());
@@ -263,8 +235,8 @@ public:
 	}
 
 	void SetDefault(const std::vector<T> &value) {
-		SetRequired(false);
-		this->value = value;
+		this->Required = false;
+		this->value    = value;
 	}
 
 	std::vector<T> value;

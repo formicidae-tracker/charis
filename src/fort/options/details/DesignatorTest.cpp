@@ -52,12 +52,6 @@ TEST_F(DesignatorTest, InvalidNumberOfDesignators) {
 	    "and a "
 	    "long name, got size 1 and 0"
 	);
-
-	EXPECT_STDEXCEPT(
-	    { parseDesignators("a"); },
-	    std::invalid_argument,
-	    "invalid designator 'a': long name is mandatory"
-	);
 }
 
 TEST_F(DesignatorTest, InvalidShortFlags) {
@@ -93,10 +87,11 @@ TEST_F(DesignatorTest, Parsing) {
 	};
 
 	std::vector<TestData> data = {
-	    {"foo", {std::nullopt, "foo"}},
+	    {"foo", {0, "foo"}},
 	    {"f,foo", {'f', "foo"}},
 	    {"foo,f", {'f', "foo"}},
 	    {"foo-bar,F", {'F', "foo-bar"}},
+	    {"f", {'f', ""}},
 	};
 
 	for (const auto &d : data) {

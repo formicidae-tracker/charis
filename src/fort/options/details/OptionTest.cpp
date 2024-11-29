@@ -26,9 +26,9 @@ TEST_F(OptionTest, BoolHaveEnforcedDefaultValueAndRequirement) {
 	    },
 	};
 	EXPECT_FALSE(opt.value);
-	EXPECT_FALSE(opt.Required());
-	EXPECT_FALSE(opt.Repeatable());
-	EXPECT_EQ(opt.NumArgs(), 0);
+	EXPECT_FALSE(opt.Required);
+	EXPECT_FALSE(opt.Repeatable);
+	EXPECT_EQ(opt.NumArgs, 0);
 }
 
 TEST_F(OptionTest, BoolParsing) {
@@ -78,10 +78,10 @@ TEST_F(OptionTest, IntHaveDefaultArguments) {
 	    .Description = "turn my flag on",
 	}};
 	EXPECT_EQ(opt.value, 0);
-	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_TRUE(opt.Required());
+	ASSERT_EQ(opt.NumArgs, 1);
+	EXPECT_TRUE(opt.Required);
 	opt.SetDefault(0);
-	EXPECT_FALSE(opt.Required());
+	EXPECT_FALSE(opt.Required);
 }
 
 TEST_F(OptionTest, IntParsing) {
@@ -129,10 +129,10 @@ TEST_F(OptionTest, FloatHaveDefaultArguments) {
 	    .Description = "turn my flag on",
 	}};
 	EXPECT_EQ(opt.value, 0.0);
-	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_TRUE(opt.Required());
+	ASSERT_EQ(opt.NumArgs, 1);
+	EXPECT_TRUE(opt.Required);
 	opt.SetDefault(0.0);
-	EXPECT_FALSE(opt.Required());
+	EXPECT_FALSE(opt.Required);
 }
 
 TEST_F(OptionTest, FloatParsing) {
@@ -141,7 +141,7 @@ TEST_F(OptionTest, FloatParsing) {
 	    .Name        = "my-flag",
 	    .Description = "turn my flag on",
 	}};
-	ASSERT_EQ(opt.NumArgs(), 1);
+	ASSERT_EQ(opt.NumArgs, 1);
 
 	opt.Parse("42");
 	EXPECT_FLOAT_EQ(opt.value, 42.0);
@@ -184,10 +184,10 @@ TEST_F(OptionTest, StringHaveDefaultArguments) {
 	    .Description = "turn my flag on",
 	}};
 	EXPECT_EQ(opt.value, "");
-	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_TRUE(opt.Required());
+	ASSERT_EQ(opt.NumArgs, 1);
+	EXPECT_TRUE(opt.Required);
 	opt.SetDefault("");
-	EXPECT_FALSE(opt.Required());
+	EXPECT_FALSE(opt.Required);
 }
 
 TEST_F(OptionTest, StringParsing) {
@@ -323,10 +323,10 @@ TEST_F(OptionTest, CustomHaveDefaultValues) {
 	// itself.
 	// EXPECT_EQ(opt.value, std::chrono::hours{0});
 
-	ASSERT_EQ(opt.NumArgs(), 1);
-	EXPECT_TRUE(opt.Required());
+	ASSERT_EQ(opt.NumArgs, 1);
+	EXPECT_TRUE(opt.Required);
 	opt.SetDefault(Duration(12340));
-	EXPECT_FALSE(opt.Required());
+	EXPECT_FALSE(opt.Required);
 }
 
 TEST_F(OptionTest, CustomParsing) {
@@ -440,8 +440,8 @@ TEST_F(OptionTest, EnumDefaultValue) {
 	};
 	// set to the first enum
 	EXPECT_EQ(opt.value, MyEnum::NONE);
-	EXPECT_TRUE(opt.Required());
-	EXPECT_FALSE(opt.Repeatable());
+	EXPECT_TRUE(opt.Required);
+	EXPECT_FALSE(opt.Repeatable);
 }
 
 TEST_F(OptionTest, EnumParsing) {

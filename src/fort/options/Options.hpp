@@ -22,20 +22,6 @@ public:
 	    : d_parent{std::nullopt}
 	    , d_shortFlags{ValuesByShort{}} {}
 
-	Group(
-	    const std::string &name, const std::string &description, Group *parent
-	)
-	    : d_name{name}
-	    , d_description{description} {
-
-		if (name.empty()) {
-			throw std::invalid_argument{
-			    "name could not be empty for child group"};
-		}
-		d_parent     = parent;
-		d_shortFlags = std::nullopt;
-	}
-
 	virtual ~Group() = default;
 
 	template <
@@ -47,11 +33,12 @@ public:
 	    const std::string &description,
 	    std::optional<T>   implicit = std::nullopt
 	) {
-		auto opt = std::make_unique<details::Option<T>>(
+		auto opt = std::make_shared<details::Option<T>>(
 		    checkArgs(designator, description),
 		    implicit
 		);
-		return pushOption(std::move(opt));
+		pushOption(opt);
+		return *opt;
 	}
 
 	template <
@@ -63,22 +50,37 @@ public:
 		auto opt = std::make_shared<details::RepeatableOption<T>>(
 		    checkArgs(designator, description)
 		);
-		pushOption(opt);
-		return opt;
+		return pushOption(opt);
 	}
 
-	template <typename T, std::enable_if_t<std::is_base_of_v<Group, T>>>
+	template <
+	    typename T,
+	    std::enable_if_t<std::is_base_of_v<Group, T>, void *> = nullptr>
 	T &AddSubgroup(const std::string &name, const std::string &description) {
 		details::checkName(name);
 		if (d_subgroups.count(name) != 0) {
 			throw std::invalid_argument("group '" + name + "' already exist");
 		}
 
-		auto group = std::make_shared<T>(name, description, this);
+		T &res =
+		    *(d_subgroups.insert({name, std::make_unique<T>()}).first->second);
 
-		d_subgroups.insert(name, group);
+		for (const auto &[flag, opt] : res.d_shortFlags.value()) {
+			if (opt->Name.size() != 0) {
+				throw std::invalid_argument{
+				    "subgroup option '" + name + "." + opt->Name +
+				    " cannot have short flag '" + std::string(1, flag) + "'"};
+			}
+			opt->Name = std::string(1, flag);
+			res.d_longFlags.insert({opt->Name, opt});
+		}
 
-		return *group;
+		res.d_shortFlags  = std::nullopt;
+		res.d_name        = name;
+		res.d_description = description;
+		res.d_parent      = this;
+
+		return res;
 	}
 
 	template <typename T> operator T &() {
@@ -86,6 +88,34 @@ public:
 	}
 
 	template <typename T> operator T() {}
+
+	void Set(const std::string &name, const std::optional<std::string> &value) {
+		if (name.size() == 1 && d_shortFlags.has_value()) {
+			auto opt = d_shortFlags.value().find(name[0]);
+			if (opt == d_shortFlags.value().end()) {
+				throw std::out_of_range{"unknown short flag '" + name + "'"};
+			}
+			opt->second->Parse(value);
+			return;
+		}
+
+		auto pos = name.find('.');
+		if (pos == std::string::npos) {
+			auto subgroupName = name.substr(0, pos);
+			auto subgroup     = d_subgroups.find(subgroupName);
+			if (subgroup == d_subgroups.end()) {
+				throw std::out_of_range{"unknown option '" + name + "'"};
+			}
+			subgroup->second->Set(name.substr(pos + 1), value);
+			return;
+		}
+
+		auto opt = d_longFlags.find(name);
+		if (opt == d_longFlags.end()) {
+			throw std::out_of_range{"unknown option '" + name + "'"};
+		}
+		opt->second->Parse(value);
+	}
 
 	void ParseArguments(int argc, const char **argv) {
 		throw std::runtime_error("not yet implemented");
@@ -100,12 +130,11 @@ public:
 	}
 
 private:
-	using OptionPtr = std::unique_ptr<details::OptionBase>;
+	using OptionPtr = std::shared_ptr<details::OptionBase>;
 	using GroupPtr  = std::unique_ptr<Group>;
 
-	using ValuesByShort =
-	    std::map<char, std::pair<Group *, details::OptionBase *>>;
-	using ValuesByLong = std::map<std::string, OptionPtr>;
+	using ValuesByShort = std::map<char, OptionPtr>;
+	using ValuesByLong  = std::map<std::string, OptionPtr>;
 
 	std::string fullOptionName(const std::string &name) const {
 		return prefix() + name;
@@ -125,66 +154,45 @@ private:
 			throw std::invalid_argument{"Description cannot be empty"};
 		}
 
-		const auto [shortName, longName] =
-		    details::parseDesignators(designator);
+		const auto [flag, name] = details::parseDesignators(designator);
 
-		if (d_longFlags.count(longName) > 0) {
+		if (d_longFlags.count(name) > 0) {
 			throw std::invalid_argument{
-			    "option '" + fullOptionName(longName) + "' already specified",
+			    "option '" + name + "' already specified",
 			};
 		}
 
-		auto [parent, option] = this->findShort(shortName.value_or(0));
-
-		if (shortName.has_value() && option != nullptr) {
-			throw std::invalid_argument{
-			    "short flag '" + std::string{1, shortName.value()} +
-			        "' already used by option '" +
-			        parent->fullOptionName(option->Name()) + "'",
-			};
+		if (d_shortFlags.has_value() == false) {
+			if (flag != 0) {
+				throw std::runtime_error{"cannot set short flag in subgroup"};
+			}
+		} else if (flag != 0) {
+			auto sh = d_shortFlags.value().find(flag);
+			if (sh != d_shortFlags.value().end()) {
+				throw std::invalid_argument{
+				    "short flag '" + std::string(1, flag) +
+				        "' already used by option '" + sh->second->Name + "'",
+				};
+			}
 		}
 
 		return {
-		    .ShortFlag   = shortName,
-		    .Name        = longName,
+		    .ShortFlag   = flag,
+		    .Name        = name,
 		    .Description = description,
 		};
 	}
 
-	std::tuple<Group *, details::OptionBase *> findShort(char flag) const {
-		if (d_parent.has_value()) {
-			return d_parent.value()->findShort(flag);
-		} else if (d_shortFlags.has_value()) {
-			try {
-				return d_shortFlags.value().at(flag);
-			} catch (const std::exception &) {
-				return {nullptr, nullptr};
-			}
-		} else {
-			throw std::logic_error{"invalid group hierarchy"};
-		}
-	}
-
 	template <typename T>
-	details::Option<T> &pushOption(std::unique_ptr<details::Option<T>> option) {
-		auto opt                    = option.get();
-		d_longFlags[option->Name()] = std::move(option);
-		mayPushShort(this, opt);
-		return *opt;
-	}
-
-	void mayPushShort(Group *owner, details::OptionBase *option) {
-		if (option->Short().has_value() == false) {
-			return;
+	details::Option<T> &pushOption(std::shared_ptr<details::Option<T>> option) {
+		if (option->Name.size() > 0) {
+			d_longFlags[option->Name] = option;
+		}
+		if (option->ShortFlag != 0) {
+			d_shortFlags.value().insert({option->ShortFlag, option});
 		}
 
-		if (d_parent.has_value()) {
-			d_parent.value()->mayPushShort(owner, option);
-		} else if (d_shortFlags.has_value()) {
-			d_shortFlags.value()[option->Short().value()] = {owner, option};
-		} else {
-			throw std::logic_error{"invalid group hierarchy"};
-		}
+		return *option;
 	}
 
 	std::string d_name;

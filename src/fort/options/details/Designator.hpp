@@ -13,25 +13,28 @@ namespace options {
 namespace details {
 
 static void checkName(const std::string &name) {
-	static std::regex nameRx{"[a-zA-Z][a-zA-Z\\-_0-9]+"};
+	static std::regex nameRx{"[a-zA-Z][a-zA-Z\\-_0-9]*"};
 	if (std::regex_match(name, nameRx) == false) {
 		throw std::invalid_argument{"invalid name '" + name + "'"};
 	}
 }
 
-inline std::tuple<std::optional<char>, std::string>
+inline std::tuple<char, std::string>
 parseDesignators(const std::string &designator) {
 	constexpr static char DELIM = ',';
 
 	auto pos = designator.find(DELIM);
 	if (pos == std::string::npos) {
 		if (designator.size() == 1) {
-			throw std::invalid_argument{
-			    "invalid designator '" + designator +
-			    "': long name is mandatory"};
+			if (std::isalpha(designator[0]) == false) {
+				throw std::invalid_argument(
+				    "invalid designator '" + designator + "'"
+				);
+			}
+			return {designator[0], ""};
 		}
 		checkName(designator);
-		return {std::nullopt, designator};
+		return {0, designator};
 	}
 
 	if (designator.find(DELIM, pos + 1) != std::string::npos) {
