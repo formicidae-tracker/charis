@@ -3,6 +3,7 @@
 
 #include <gmock/gmock.h>
 
+#include <gtest/gtest.h>
 #include <sstream>
 #include <stdexcept>
 
@@ -84,6 +85,55 @@ TEST_F(OptionsTest, HelpArgumentExits) {
 	        ::testing::ContainsRegex("tested \\[OPTIONS\\]"),
 	        ::testing::ContainsRegex("Usage:")
 	    )
+	);
+}
+
+TEST_F(OptionsTest, ParsesArguments) {
+	Opts opts;
+	opts.SetDescription("Runs a PID");
+
+	const char *argv[] = {
+	    "tested",
+	    "-t",
+	    "32",
+	    "--pid.K=42.0",
+	    "--pid.I",
+	    "0.001",
+	    "--pid.D=62.5",
+	    "foo",
+	    "bar",
+	};
+
+	int argc = sizeof(argv) / sizeof(const char *);
+
+	EXPECT_NO_THROW({ opts.ParseArguments(argc, argv); });
+
+	EXPECT_EQ(opts.threshold, 32);
+	EXPECT_FLOAT_EQ(opts.pid.K, 42.0);
+	EXPECT_FLOAT_EQ(opts.pid.I, 0.001);
+	EXPECT_FLOAT_EQ(opts.pid.D, 62.5);
+	ASSERT_EQ(argc, 3);
+	EXPECT_STREQ(argv[0], "tested");
+	EXPECT_STREQ(argv[1], "foo");
+	EXPECT_STREQ(argv[2], "bar");
+}
+
+TEST_F(OptionsTest, FailsRequiredArguments) {
+	Opts opts;
+	opts.SetDescription("Runs a PID");
+
+	const char *argv[] = {
+	    "tested",
+	    "-t",
+	    "32",
+	};
+
+	int argc = sizeof(argv) / sizeof(const char *);
+
+	EXPECT_STDEXCEPT(
+	    { opts.ParseArguments(argc, argv); },
+	    std::runtime_error,
+	    "missing required option 'pid.K'"
 	);
 }
 

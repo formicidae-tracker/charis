@@ -27,9 +27,7 @@ public:
 	          .Flag        = 'h',
 	          .Name        = "help",
 	          .Description = "displays this help message",
-	      })} {
-		std::cerr << "Created group " << this << std::endl;
-	}
+	      })} {}
 
 	virtual ~Group() = default;
 
@@ -162,7 +160,7 @@ public:
 		for (int i = 1; i < tokens.size(); ++i) {
 			if (tokens[i].Type == details::TokenType::VALUE) {
 				// unconsummed value, simply add it to the argument.
-				argv[argc] = argv[i];
+				argv[argc] = argv[tokens[i].Index];
 				++argc;
 				continue;
 			}
@@ -187,6 +185,8 @@ public:
 			opt->Parse(tokens[i + 1].Value);
 			i += 1; // we consumed two token here
 		}
+
+		checkMissing();
 	}
 
 	void FormatUsage(std::ostream &out, const std::string &nm = "") const {
@@ -284,6 +284,17 @@ private:
 			}
 			return iter->second;
 		}
+
+		auto dot = name.find('.');
+
+		if (dot != std::string::npos) {
+			auto group = d_subgroups.find(name.substr(0, dot));
+			if (group == d_subgroups.end()) {
+				return nullptr;
+			}
+			return group->second->findOption(name.substr(dot + 1));
+		}
+
 		auto iter = d_options.find(name);
 		if (iter == d_options.end()) {
 			return nullptr;
@@ -339,13 +350,33 @@ private:
 
 	void pushOption(OptionPtr option) {
 		if (option->Name.size() > 0) {
-			std::cerr << "adding option '" << option->Name << "'" << std::endl;
 			d_options[option->Name] = option;
 		}
 		if (option->Flag != 0) {
 			d_flags.value().insert({option->Flag, option});
 		}
 		d_inOrder.push_back(option);
+	}
+
+	void checkMissing(std::string nm = "") const {
+		for (const auto &opt : d_inOrder) {
+			if (opt->Required == false || opt->IsSet()) {
+				continue;
+			}
+			auto name = nm.empty() ? opt->Name : nm + "." + opt->Name;
+			if (opt->Name.empty()) {
+				name += std::string(1, opt->Flag);
+			}
+			throw std::runtime_error({"missing required option '" + name + "'"}
+			);
+		}
+
+		if (nm.size() > 0) {
+			nm += ".";
+		}
+		for (const auto &[name, subgroup] : d_subgroups) {
+			subgroup->checkMissing(nm + name);
+		}
 	}
 
 	std::string d_name;

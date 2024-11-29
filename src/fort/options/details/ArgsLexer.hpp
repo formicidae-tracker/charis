@@ -20,6 +20,7 @@ enum class TokenType {
 struct ArgToken {
 	TokenType   Type;
 	std::string Value;
+	int         Index = -1;
 };
 
 inline std::vector<ArgToken> lexArguments(int argc, char **argv) {
@@ -42,7 +43,9 @@ inline std::vector<ArgToken> lexArguments(int argc, char **argv) {
 		std::string arg{argv[i]}; // parse the C string
 
 		if (arg.size() == 0 || arg[0] != '-') {
-			res.emplace_back(ArgToken{.Type = TokenType::VALUE, .Value = arg});
+			res.emplace_back(
+			    ArgToken{.Type = TokenType::VALUE, .Value = arg, .Index = i}
+			);
 			continue;
 		}
 
@@ -87,9 +90,11 @@ inline std::vector<ArgToken> lexArguments(int argc, char **argv) {
 				    "invalid long flag name '" + ident + "'"
 				);
 			}
-			res.emplace_back(
-			    ArgToken{.Type = TokenType::IDENTIFIER, .Value = ident}
-			);
+			res.emplace_back(ArgToken{
+			    .Type  = TokenType::IDENTIFIER,
+			    .Value = ident,
+			    .Index = i,
+			});
 			continue;
 		}
 		if (arg.substr(equalPos + 1).find('=') != std::string::npos) {

@@ -76,6 +76,10 @@ public:
 	virtual void Parse(const std::optional<std::string> &) = 0;
 	virtual void Format(std::ostream &out) const           = 0;
 
+	bool IsSet() const {
+		return d_set;
+	}
+
 protected:
 	template <typename T>
 	inline void Parse(const std::string &value, T &res) const {
@@ -119,6 +123,8 @@ protected:
 			out << std::boolalpha << value;
 		}
 	}
+
+	bool d_set = false;
 };
 
 template <>
@@ -180,6 +186,7 @@ public:
 			throw ParseError{this->Name, ""};
 		}
 		OptionBase::Parse<T>(value.value_or(""), this->Value);
+		d_set = true;
 	}
 
 	void Format(std::ostream &out) const override {
@@ -199,7 +206,7 @@ public:
 	template <typename U> operator U() {}
 
 	T Value;
-    };
+};
 
 template <typename T, std::enable_if_t<is_optionable_v<T>> * = nullptr>
 class RepeatableOption : public OptionBase {
