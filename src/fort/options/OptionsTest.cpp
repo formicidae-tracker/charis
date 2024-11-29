@@ -20,8 +20,8 @@ TEST_F(SimpleOptionsTest, Simple) {
 
 	Simple opts;
 
-	EXPECT_NO_THROW({ opts.ParseArguments(1, argv); });
-	EXPECT_EQ(opts.threshold, 3);
+	EXPECT_THROW({ opts.ParseArguments(1, argv); }, std::runtime_error);
+	EXPECT_EQ(opts.threshold, 0);
 }
 
 TEST_F(SimpleOptionsTest, NameChecking) {
