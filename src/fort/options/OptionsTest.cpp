@@ -13,16 +13,16 @@ namespace options {
 class OptionsTest : public ::testing::Test {
 protected:
 	struct PID : public Group {
-		float &K = AddOption<float>("K", "Proportional gain");
-		float &I = AddOption<float>("I", "Integral gain");
-		float &D = AddOption<float>("D", "Derivative gain");
+		float &K = AddOption<float>("K", "Proportional gain"); // required
+		float &I = AddOption<float>("I", "Integral gain");     // required
+		float &D = AddOption<float>("D", "Derivative gain");   // required
 	};
 
 	struct Opts : public Group {
 		int &threshold = AddOption<int>("threshold,t", "an important threshold")
-		                     .SetDefault(10);
+		                     .SetDefault(10); // optional
 
-		PID &pid = AddSubgroup<PID>("pid", "the pid to set");
+		PID &pid = AddSubgroup<PID>("pid", "the pid to set"); // subgroup
 	};
 
 	const static std::string USAGE;
