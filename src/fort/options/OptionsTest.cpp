@@ -174,5 +174,25 @@ TEST_F(OptionsTest, NameChecking) {
 	);
 }
 
+#ifdef CHARIS_OPTIONS_USE_FKYAML
+TEST_F(OptionsTest, CanParseYAML) {
+	std::string        raw = R"(pid:
+  k: 42.0
+  i: 0.001
+  d: 0.625
+threshold: 23
+)";
+	std::istringstream iss(raw);
+	Opts               opts;
+
+	EXPECT_NO_THROW(opts.ParseYAML(iss));
+
+	EXPECT_FLOAT_EQ(opts.pid.K, 42.0);
+	EXPECT_FLOAT_EQ(opts.pid.I, 0.001);
+	EXPECT_FLOAT_EQ(opts.pid.D, 0.625);
+	EXPECT_EQ(opts.threshold, 23);
+}
+#endif
+
 } // namespace options
 } // namespace fort

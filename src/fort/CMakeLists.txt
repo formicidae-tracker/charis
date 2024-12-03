@@ -17,6 +17,15 @@ if(FORT_CHARIS_USE_MAGIC_ENUM)
 	FetchContent_MakeAvailable(magic_enum)
 endif(FORT_CHARIS_USE_MAGIC_ENUM)
 
+if(FORT_CHARIS_USE_FKYAML)
+	FetchContent_Declare(
+		fkYAML
+		GIT_REPOSITORY https://github.com/fktn-k/fkYAML.git
+		GIT_TAG v0.3.14
+	)
+	FetchContent_MakeAvailable(fkYAML)
+endif(FORT_CHARIS_USE_FKYAML)
+
 if(FORT_CHARIS_BUILD_UTILS)
 	add_subdirectory(utils)
 endif(FORT_CHARIS_BUILD_UTILS)

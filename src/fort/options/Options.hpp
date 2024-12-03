@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fkYAML/detail/types/yaml_version_t.hpp"
 #include <map>
 #include <memory>
 #include <optional>
@@ -13,6 +14,11 @@
 #include <fort/options/details/Designator.hpp>
 #include <fort/options/details/Option.hpp>
 #include <fort/options/details/Traits.hpp>
+#include <fort/options/details/config.hpp>
+
+#ifdef CHARIS_OPTIONS_USE_FKYAML
+#include <fkYAML/node.hpp>
+#endif
 
 namespace fort {
 namespace options {
@@ -221,9 +227,13 @@ public:
 		}
 	}
 
-	void ParseYAML(const std::string &filename) {
-		throw std::runtime_error("not yet implemented");
+#ifdef CHARIS_OPTIONS_USE_FKYAML
+	void ParseYAML(std::istream &input) {
+		auto root = fkyaml::node::deserialize(input);
+		parseYAML(root);
 	}
+
+#endif
 
 	void ParseINI(const std::string &filename) {
 		throw std::runtime_error("not yet implemented");
@@ -379,7 +389,16 @@ private:
 		}
 	}
 
-	std::string d_name;
+#ifdef CHARIS_OPTIONS_USE_FKYAML
+	void parseYAML(const fkyaml::node &node) {
+		if (node.is_mapping() == false) {
+			throw std::runtime_error{"not a mapping"};
+		}
+	}
+
+#endif
+
+std::string     d_name;
 	std::string d_description;
 
 	ValuesByLong d_options;

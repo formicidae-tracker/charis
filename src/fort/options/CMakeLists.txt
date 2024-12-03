@@ -23,6 +23,10 @@ if(FORT_CHARIS_USE_MAGIC_ENUM)
 	target_link_libraries(fort-options INTERFACE magic_enum::magic_enum)
 endif(FORT_CHARIS_USE_MAGIC_ENUM)
 
+if(FORT_CHARIS_USE_FKYAML)
+	target_link_libraries(fort-options INTERFACE fkYAML::fkYAML)
+endif(FORT_CHARIS_USE_FKYAML)
+
 if(NOT CHARIS_IMPORTED)
 
 	add_executable(charis-options-tests ${TEST_SRC_FILES} ${HDR_FILES})

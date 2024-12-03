@@ -22,6 +22,7 @@ option(FORT_CHARIS_BUILD_UTILS "Builds libfort-utils library" On)
 option(FORT_CHARIS_BUILD_VIDEO "Builds libfort-video library" On)
 option(FORT_CHARIS_BUILD_OPTIONS "Builds libfort-options library" On)
 option(FORT_CHARIS_USE_MAGIC_ENUM "Uses magic_enum" On)
+option(FORT_CHARIS_USE_FKYAML "Uses FK Yaml" On)
 
 include(FetchContent)
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Traits.hpp"
-#include "magic_enum/magic_enum.hpp"
 #include <cctype>
 #include <ios>
 #include <iterator>
@@ -13,6 +11,13 @@
 #include <vector>
 
 #include <fort/utils/Defer.hpp>
+
+#include "Traits.hpp"
+#include "config.hpp"
+
+#ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
+#include <magic_enum/magic_enum.hpp>
+#endif
 
 namespace fort {
 namespace options {
