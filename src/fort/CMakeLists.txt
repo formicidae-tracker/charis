@@ -21,7 +21,7 @@ if(FORT_CHARIS_USE_FKYAML)
 	FetchContent_Declare(
 		fkYAML
 		GIT_REPOSITORY https://github.com/fktn-k/fkYAML.git
-		GIT_TAG v0.3.14
+		GIT_TAG v0.4.2
 	)
 	FetchContent_MakeAvailable(fkYAML)
 endif(FORT_CHARIS_USE_FKYAML)

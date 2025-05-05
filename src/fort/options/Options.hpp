@@ -394,11 +394,29 @@ private:
 		if (node.is_mapping() == false) {
 			throw std::runtime_error{"not a mapping"};
 		}
+
+		for (const auto &[keyNode, value] : node.map_items()) {
+			const auto &key = keyNode.get_value<std::string>();
+			if (value.is_mapping()) {
+				if (d_subgroups.count(key) == 0) {
+					throw std::runtime_error(
+					    "No subgroup '" + key + "' defined"
+					);
+				}
+				d_subgroups[key]->parseYAML(value);
+				continue;
+			}
+
+			if (d_options.count(key) == 0) {
+				throw std::runtime_error("No option '" + key + "' defined");
+			}
+			d_options[key]->Parse(fkyaml::node::serialize(value));
+		}
 	}
 
 #endif
 
-std::string     d_name;
+	std::string d_name;
 	std::string d_description;
 
 	ValuesByLong d_options;

@@ -177,9 +177,9 @@ TEST_F(OptionsTest, NameChecking) {
 #ifdef CHARIS_OPTIONS_USE_FKYAML
 TEST_F(OptionsTest, CanParseYAML) {
 	std::string        raw = R"(pid:
-  k: 42.0
-  i: 0.001
-  d: 0.625
+  K: 42.0
+  I: 0.001
+  D: 0.625
 threshold: 23
 )";
 	std::istringstream iss(raw);
