@@ -54,9 +54,6 @@ if(NOT CHARIS_IMPORTED)
 
 	gtest_discover_tests(fort-time-tests)
 	add_dependencies(check fort-time-tests)
-else(NOT CHARIS_IMPORTED)
-
-	target_link_libraries(fort-charis::libfort-time INTERFACE fort-time)
 endif(NOT CHARIS_IMPORTED)
 
 install(FILES Time.hpp ${CMAKE_CURRENT_BINARY_DIR}/version.hpp
