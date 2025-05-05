@@ -1,6 +1,5 @@
 #pragma once
 
-#include "gtest/gtest.h"
 #include <cctype>
 #include <locale>
 #include <regex>
