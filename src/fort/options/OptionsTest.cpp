@@ -23,6 +23,10 @@ protected:
 		                     .SetDefault(10); // optional
 
 		PID &pid = AddSubgroup<PID>("pid", "the pid to set"); // subgroup
+
+		std::vector<std::string> &includes = AddRepeatableOption<std::string>(
+		    "I,include", "include directories"
+		);
 	};
 
 	const static std::string USAGE;
@@ -35,6 +39,7 @@ Runs a PID
 
 Application Options:
   -t, --threshold   : an important threshold [default: 10]
+  -I, --include     : include directories [default: []]
 
 pid: the pid to set
       --pid.K       : Proportional gain [required]
@@ -100,6 +105,9 @@ TEST_F(OptionsTest, ParsesArguments) {
 	    "--pid.I",
 	    "0.001",
 	    "--pid.D=62.5",
+	    "-I",
+	    "include",
+	    "--include=vendor/include",
 	    "foo",
 	    "bar",
 	};
@@ -109,6 +117,10 @@ TEST_F(OptionsTest, ParsesArguments) {
 	EXPECT_NO_THROW({ opts.ParseArguments(argc, argv); });
 
 	EXPECT_EQ(opts.threshold, 32);
+	EXPECT_EQ(
+	    opts.includes,
+	    std::vector<std::string>({"include", "vendor/include"})
+	);
 	EXPECT_FLOAT_EQ(opts.pid.K, 42.0);
 	EXPECT_FLOAT_EQ(opts.pid.I, 0.001);
 	EXPECT_FLOAT_EQ(opts.pid.D, 62.5);
@@ -181,6 +193,9 @@ TEST_F(OptionsTest, CanParseYAML) {
   I: 0.001
   D: 0.625
 threshold: 23
+include:
+  - foo
+  - bar
 )";
 	std::istringstream iss(raw);
 	Opts               opts;
@@ -191,6 +206,7 @@ threshold: 23
 	EXPECT_FLOAT_EQ(opts.pid.I, 0.001);
 	EXPECT_FLOAT_EQ(opts.pid.D, 0.625);
 	EXPECT_EQ(opts.threshold, 23);
+	EXPECT_EQ(opts.includes, std::vector<std::string>({"foo", "bar"}));
 }
 #endif
 

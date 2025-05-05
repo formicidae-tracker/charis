@@ -223,7 +223,7 @@ public:
 	          .Description = args.Description,
 	          .NumArgs     = std::is_same_v<T, bool> ? 0 : 1,
 	          .Required    = false,
-	          .Repeatable  = false,
+	          .Repeatable  = true,
 	      }} {}
 
 	void Parse(const std::optional<std::string> &value) override {
@@ -248,6 +248,10 @@ public:
 	void SetDefault(const std::vector<T> &value) {
 		this->Required = false;
 		this->value    = value;
+	}
+
+	operator std::vector<T> &() {
+		return this->value;
 	}
 
 	std::vector<T> value;

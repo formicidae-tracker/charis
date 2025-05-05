@@ -56,10 +56,10 @@ public:
 
 	template <
 	    typename T,
-	    std::enable_if_t<details::is_specialization_v<T, std::vector>> * =
-	        nullptr>
-	details::Option<T> &
-	AddOption(const std::string &designator, const std::string &description) {
+	    std::enable_if_t<details::is_optionable_v<T>> * = nullptr>
+	details::RepeatableOption<T> &AddRepeatableOption(
+	    const std::string &designator, const std::string &description
+	) {
 		auto opt = std::make_shared<details::RepeatableOption<T>>(
 		    checkArgs(designator, description)
 		);
@@ -368,16 +368,29 @@ private:
 		d_inOrder.push_back(option);
 	}
 
+	static std::string
+	optionName(const OptionPtr &opt, const std::string &nm = "") {
+		std::cerr << "option name with nm=" << nm << std::endl;
+		return optionName(
+		    opt->Name.empty() ? std::string{1, opt->Flag} : opt->Name,
+		    nm
+		);
+	}
+
+	static std::string
+	optionName(const std::string &name, const std::string &nm = "") {
+		return nm.empty() ? name : (nm + "." + name);
+	}
+
 	void checkMissing(std::string nm = "") const {
+		std::cerr << "check missing in '" << nm << "'" << std::endl;
 		for (const auto &opt : d_inOrder) {
 			if (opt->Required == false || opt->IsSet()) {
 				continue;
 			}
-			auto name = nm.empty() ? opt->Name : nm + "." + opt->Name;
-			if (opt->Name.empty()) {
-				name += std::string(1, opt->Flag);
-			}
-			throw std::runtime_error({"missing required option '" + name + "'"}
+			std::cerr << "coucou " << std::endl;
+			throw std::runtime_error(
+			    {"missing required option '" + optionName(opt, nm) + "'"}
 			);
 		}
 
@@ -390,7 +403,8 @@ private:
 	}
 
 #ifdef CHARIS_OPTIONS_USE_FKYAML
-	void parseYAML(const fkyaml::node &node) {
+	void parseYAML(const fkyaml::node &node, std::string nm = "") {
+
 		if (node.is_mapping() == false) {
 			throw std::runtime_error{"not a mapping"};
 		}
@@ -400,34 +414,61 @@ private:
 			if (value.is_mapping()) {
 				if (d_subgroups.count(key) == 0) {
 					throw std::runtime_error(
-					    "No subgroup '" + key + "' defined"
+					    "No subgroup '" + optionName(key, nm) + "' defined"
 					);
 				}
-				d_subgroups[key]->parseYAML(value);
+				auto subNm = (nm.empty() ? "" : (nm + ".")) + d_name;
+				d_subgroups[key]->parseYAML(value, subNm);
 				continue;
 			}
 
 			if (d_options.count(key) == 0) {
-				throw std::runtime_error("No option '" + key + "' defined");
+				throw std::runtime_error(
+				    "No option '" + optionName(key, nm) + "' defined"
+				);
 			}
-			d_options[key]->Parse(fkyaml::node::serialize(value));
+
+			auto &option = d_options[key];
+			if ((value.is_sequence() || value.is_mapping())) {
+
+				if (option->Repeatable == false) {
+					throw std::runtime_error(
+					    "could not set multiple values to non-repeatable "
+					    "option '" +
+					    optionName(key, nm) + "'"
+					);
+				}
+
+				for (const auto &v : value) {
+					if (v.is_sequence() || v.is_mapping()) {
+						throw std::runtime_error(
+						    "could not set multiple nested values for option "
+						    "'" +
+						    optionName(key, nm) + "'"
+						);
+					}
+					option->Parse(fkyaml::node::serialize(v));
+				}
+			} else {
+				option->Parse(fkyaml::node::serialize(value));
+			}
 		}
 	}
 
 #endif
 
-	std::string d_name;
-	std::string d_description;
+		std::string d_name;
+		std::string d_description;
 
-	ValuesByLong d_options;
+		ValuesByLong d_options;
 
-	std::optional<Group *>          d_parent;
-	std::optional<ValuesByShort>    d_flags;
-	std::map<std::string, GroupPtr> d_subgroups;
+		std::optional<Group *>          d_parent;
+		std::optional<ValuesByShort>    d_flags;
+		std::map<std::string, GroupPtr> d_subgroups;
 
-	std::vector<OptionPtr> d_inOrder;
-	OptionPtr              d_help;
-};
+		std::vector<OptionPtr> d_inOrder;
+		OptionPtr              d_help;
+	};
 
-} // namespace options
+    } // namespace options
 } // namespace fort

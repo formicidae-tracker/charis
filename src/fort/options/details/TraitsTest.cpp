@@ -68,8 +68,10 @@ TEST_F(TraitsTest, Custom) {
 
 TEST_F(TraitsTest, Specialization) {
 	EXPECT_TRUE((is_specialization_v<std::vector<int>, std::vector>));
+	EXPECT_TRUE((is_specialization_v<std::vector<std::string>, std::vector>));
 	EXPECT_FALSE((is_specialization_v<std::vector<int>, std::list>));
 	EXPECT_FALSE((is_specialization_v<int, std::list>));
+	EXPECT_FALSE((is_specialization_v<int, std::vector>));
 }
 
 TEST_F(TraitsTest, Enum) {
