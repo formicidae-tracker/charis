@@ -17,8 +17,9 @@ add_library(fort-charis::libfort-video ALIAS fort-video)
 target_include_directories(fort-video INTERFACE ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(
-	fort-video PUBLIC PkgConfig::ffmpeg cpptrace::cpptrace
-					  fort-charis::libfort-utils spng "-rdynamic"
+	fort-video
+	PUBLIC PkgConfig::ffmpeg cpptrace::cpptrace fort-charis::libfort-utils spng
+		   "-rdynamic" ${CMAKE_DL_LIBS}
 )
 
 if(NOT CHARIS_IMPORTED)
