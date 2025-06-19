@@ -3,11 +3,12 @@
 #include "details/AVCall.hpp"
 #include <fort/utils/Defer.hpp>
 #include <iostream>
-#include <libavcodec/packet.h>
+
 #include <libavutil/mathematics.h>
 #include <memory>
 
 extern "C" {
+#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>
 }
