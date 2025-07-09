@@ -1,3 +1,5 @@
+option(FORT_CHARIS_CAPITALIZE_DEFER Off)
+
 set(SRC_FILES Defer.cpp Once.cpp ObjectPool.cpp)
 set(HDR_FILES Defer.hpp Once.hpp ObjectPool.hpp)
 
@@ -7,6 +9,12 @@ add_library(fort-utils INTERFACE)
 add_library(fort-charis::libfort-utils ALIAS fort-utils)
 target_include_directories(fort-utils INTERFACE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(fort-utils INTERFACE concurrentqueue)
+
+if(FORT_CHARIS_CAPITALIZE_DEFER)
+	target_compile_definitions(
+		fort-utils INTERFACE -DFORT_CHARIS_CAPITALIZE_DEFER=1
+	)
+endif(FORT_CHARIS_CAPITALIZE_DEFER)
 
 if(NOT CHARIS_IMPORTED)
 	add_executable(charis-utils-tests ${TEST_SRC_FILES} ${TEST_HDR_FILES})

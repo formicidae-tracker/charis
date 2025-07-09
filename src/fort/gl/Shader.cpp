@@ -1,6 +1,10 @@
 #include "Shader.hpp"
 #include <fort/utils/Defer.hpp>
 
+#ifdef FORT_CHARIS_CAPITALIZE_DEFER
+#define defer Defer
+#endif
+
 #include <stdexcept>
 #include <vector>
 

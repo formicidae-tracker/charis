@@ -3,8 +3,12 @@
 #define fu_DEFER_UNIQUE_NAME_INNER(a, b) a##b
 #define fu_DEFER_UNIQUE_NAME(base, line) fu_DEFER_UNIQUE_NAME_INNER(base, line)
 #define fu_DEFER_NAME                    fu_DEFER_UNIQUE_NAME(zz_defer, __LINE__)
-#define defer                            auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
 
+#ifndef FORT_CHARIS_CAPITALIZE_DEFER
+#define defer auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#else
+#define Defer auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#endif
 namespace fort {
 namespace utils {
 namespace details {

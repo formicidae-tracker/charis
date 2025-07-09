@@ -19,6 +19,10 @@
 #include <magic_enum/magic_enum.hpp>
 #endif
 
+#ifdef FORT_CHARIS_CAPITALIZE_DEFER
+#define defer Defer
+#endif
+
 namespace fort {
 namespace options {
 namespace details {
@@ -260,3 +264,7 @@ public:
 } // namespace details
 } // namespace options
 } // namespace fort
+
+#ifdef FORT_CHARIS_CAPITALIZE_DEFER
+#undef defer
+#endif
