@@ -1,5 +1,6 @@
 #include <cpptrace/from_current.hpp>
 
+#include "fort/options/details/Option.hpp"
 #include "fort/options/tests.hpp"
 #include <fort/options/Options.hpp>
 
@@ -234,6 +235,39 @@ TEST_F(OptionsTest, CanParseFlags) {
 	CPPTRACE_CATCH(const std::exception &e) {
 		ADD_FAILURE() << "Unexpected exception: " << e.what();
 		cpptrace::from_current_exception().print();
+	}
+
+	CPPTRACE_TRY {
+		int         argc    = 2;
+		const char *argv[2] = {"program", "--flag=false"};
+		opts.ParseArguments(argc, argv);
+		EXPECT_FALSE(opts.Flags);
+	}
+	CPPTRACE_CATCH(const std::exception &e) {
+		ADD_FAILURE() << "Unexpected exception: " << e.what();
+		cpptrace::from_current_exception().print();
+	}
+
+	CPPTRACE_TRY {
+		int         argc    = 2;
+		const char *argv[2] = {"program", "--flag=true"};
+		opts.ParseArguments(argc, argv);
+		EXPECT_TRUE(opts.Flags);
+	}
+	CPPTRACE_CATCH(const std::exception &e) {
+		ADD_FAILURE() << "Unexpected exception: " << e.what();
+		cpptrace::from_current_exception().print();
+	}
+
+	try {
+		int         argc    = 2;
+		const char *argv[2] = {"program", "--flag=foo"};
+		opts.ParseArguments(argc, argv);
+		ADD_FAILURE() << "it should have thrown an error";
+	} catch (const details::ParseError &e) {
+		EXPECT_EQ(std::string(e.what()), "could not parse flag='foo'");
+	} catch (const std::exception &e) {
+		ADD_FAILURE() << "It throws unexpected exception: " << e.what();
 	}
 }
 
