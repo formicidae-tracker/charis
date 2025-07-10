@@ -98,11 +98,10 @@ public:
 		return res;
 	}
 
-	template <typename T> operator T &() {
+	template <typename T, std::enable_if_t<std::is_same_v<T, Group> == false>>
+	operator T &() {
 		return *this;
 	}
-
-	template <typename T> operator T() {}
 
 	void Set(const std::string &name, const std::optional<std::string> &value) {
 		if (name.size() == 1 && d_flags.has_value()) {
