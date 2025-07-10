@@ -1,3 +1,12 @@
+if(FORT_BUILD_VIDEO OR NOT CHARIS_IMPORTED)
+	FetchContent_Declare(
+		cpptrace
+		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
+		GIT_TAG v1.0.2 # <HASH or TAG>
+	)
+	FetchContent_MakeAvailable(cpptrace)
+endif(FORT_BUILD_VIDEO OR NOT CHARIS_IMPORTED)
+
 if(FORT_CHARIS_BUILD_TIME)
 	add_subdirectory(time)
 endif(FORT_CHARIS_BUILD_TIME)
@@ -51,22 +60,13 @@ if(FORT_CHARIS_BUILD_GL)
 endif(FORT_CHARIS_BUILD_GL)
 
 if(FORT_CHARIS_BUILD_VIDEO)
-	set(CPPTRACE_BUILD_SHARED
-		On
-		CACHE BOOL "Build shared lib" FORCE
-	)
-	FetchContent_Declare(
-		cpptrace
-		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
-		GIT_TAG v0.3.1 # <HASH or TAG>
-	)
 	FetchContent_Declare(
 		spng
 		GIT_REPOSITORY https://github.com/randy408/libspng.git
 		GIT_TAG v0.7.4
 	)
 
-	FetchContent_MakeAvailable(cpptrace spng)
+	FetchContent_MakeAvailable(spng)
 
 	find_package(PkgConfig REQUIRED)
 

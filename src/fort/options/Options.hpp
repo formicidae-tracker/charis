@@ -153,7 +153,6 @@ public:
 		if (d_parent.has_value()) {
 			throw std::logic_error{"Only root group can parse arguments"};
 		}
-		mayAddHelp();
 		auto tokens = details::lexArguments(argc, (char **)argv);
 
 		if (argc == 0 || tokens[0].Type != details::TokenType::VALUE) {
@@ -181,17 +180,16 @@ public:
 				throw std::runtime_error{
 				    "unknown flag '" + tokens[i].Value + "'"};
 			}
-
 			if (opt->NumArgs == 0 &&
 			    tokens[i].Type != details::TokenType::IDENTIFIER_WITH_VALUE) {
 				opt->Parse(std::nullopt);
 			} else if (i + 1 == tokens.size() || tokens[i + 1].Type != details::TokenType::VALUE) {
 				throw std::runtime_error{"missing required value after flag"};
+			} else {
+				opt->Parse(tokens[i + 1].Value);
+				i += 1; // we consumed two token here
 			}
-			opt->Parse(tokens[i + 1].Value);
-			i += 1; // we consumed two token here
 		}
-
 		checkMissing();
 	}
 
@@ -352,12 +350,6 @@ private:
 		};
 	}
 
-	void mayAddHelp() {
-		if (d_parent.has_value() || d_options.count("help") > 0) {
-			return;
-		}
-	}
-
 	void pushOption(OptionPtr option) {
 		if (option->Name.size() > 0) {
 			d_options[option->Name] = option;
@@ -370,7 +362,6 @@ private:
 
 	static std::string
 	optionName(const OptionPtr &opt, const std::string &nm = "") {
-		std::cerr << "option name with nm=" << nm << std::endl;
 		return optionName(
 		    opt->Name.empty() ? std::string{1, opt->Flag} : opt->Name,
 		    nm
@@ -383,12 +374,10 @@ private:
 	}
 
 	void checkMissing(std::string nm = "") const {
-		std::cerr << "check missing in '" << nm << "'" << std::endl;
 		for (const auto &opt : d_inOrder) {
 			if (opt->Required == false || opt->IsSet()) {
 				continue;
 			}
-			std::cerr << "coucou " << std::endl;
 			throw std::runtime_error(
 			    {"missing required option '" + optionName(opt, nm) + "'"}
 			);

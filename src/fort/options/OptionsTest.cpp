@@ -1,3 +1,5 @@
+#include <cpptrace/from_current.hpp>
+
 #include "fort/options/tests.hpp"
 #include <fort/options/Options.hpp>
 
@@ -209,6 +211,31 @@ include:
 	EXPECT_EQ(opts.includes, std::vector<std::string>({"foo", "bar"}));
 }
 #endif
+
+TEST_F(OptionsTest, CanParseFlags) {
+	struct OptionWithFlags : public Group {
+		bool &Flags = AddOption<bool>("flag,f", "A flag to set");
+	};
+
+	OptionWithFlags opts;
+	EXPECT_NO_THROW({
+		int         argc    = 1;
+		const char *argv[1] = {"program"};
+		opts.ParseArguments(argc, argv);
+		EXPECT_FALSE(opts.Flags);
+	});
+
+	CPPTRACE_TRY {
+		int         argc    = 2;
+		const char *argv[2] = {"program", "--flag"};
+		opts.ParseArguments(argc, argv);
+		EXPECT_TRUE(opts.Flags);
+	}
+	CPPTRACE_CATCH(const std::exception &e) {
+		ADD_FAILURE() << "Unexpected exception: " << e.what();
+		cpptrace::from_current_exception().print();
+	}
+}
 
 } // namespace options
 } // namespace fort
