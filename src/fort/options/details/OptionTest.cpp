@@ -1,14 +1,27 @@
 #include <gtest/gtest.h>
 
-#include "Option.hpp"
 #include <chrono>
-#include <fort/utils/Defer.hpp>
+
 #include <iomanip>
 #include <ios>
 #include <ratio>
 #include <regex>
 #include <sstream>
 #include <string>
+
+namespace fort {
+namespace options {
+namespace details {
+using Duration = std::chrono::duration<int64_t, std::nano>;
+std::ostream &operator<<(std::ostream &out, const Duration &);
+std::istream &operator>>(std::istream &in, Duration &);
+} // namespace details
+} // namespace options
+} // namespace fort
+
+#include "Option.hpp"
+
+#include <fort/utils/Defer.hpp>
 
 namespace fort {
 namespace options {
@@ -213,8 +226,6 @@ TEST_F(OptionTest, StringFormatting) {
 	opt.Format(out);
 	EXPECT_EQ(out.str(), "The quick brown fox jumps over the lazy dog.");
 }
-
-using Duration = std::chrono::duration<int64_t, std::nano>;
 
 constexpr int64_t SECOND = 1000000000L;
 
