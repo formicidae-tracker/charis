@@ -714,4 +714,16 @@ TEST_F(TimeUTest, InfiniteCannotBeConstructedFromOtherValues) {
 	);
 }
 
+TEST_F(TimeUTest, CastToChrono) {
+	auto t  = Time::Parse("2025-07-24T15:17:01.123456Z");
+	auto tp = t.ToTimePoint();
+	EXPECT_EQ(tp.time_since_epoch().count(), t.Sub(Time()).Nanoseconds());
+	auto andBack = Time::FromTimePoint(tp);
+	EXPECT_TRUE(TimeEqual(t, andBack));
+
+	EXPECT_THROW(Time::Forever().ToTimePoint(), Time::Overflow);
+	auto largeTime = Time::Parse("3000-01-01T00:00:00.000Z");
+	EXPECT_THROW(largeTime.ToTimePoint(), Time::Overflow);
+}
+
 } // namespace fort

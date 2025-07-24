@@ -16,6 +16,9 @@
 //
 // You should have received a copy of the GNU General Public License along with
 // libfort-time.  If not, see <http://www.gnu.org/licenses/>.
+#include <chrono>
+#include <cstdint>
+#include <limits>
 #include <time.h>
 
 #include <iomanip>
@@ -179,26 +182,14 @@ Duration Duration::Parse(const std::string &i) {
 	return res + other;
 }
 
-// we don't use numeric_limit as we want to force pre-compiled
-// values for some low-level functions
-#define MAX_UINT64              (uint64_t(0xffffffffffffffffULL))
-#define MAX_SINT64              (int64_t(0x7fffffffffffffffLL))
-#define MIN_SINT64              (int64_t(0x8000000000000000LL))
-#define NANOS_PER_SECOND_UINT64 1000000000ULL
-#define NANOS_PER_SECOND_SINT64 1000000000LL
-
-#define MAX_SECOND_UINT64 uint64_t(MAX_UINT64 / NANOS_PER_SECOND_UINT64)
-#define MAX_SECOND_SINT64 int64_t(MAX_SINT64 / NANOS_PER_SECOND_SINT64)
-#define MIN_SECOND_SINT64 int64_t(MIN_SINT64 / NANOS_PER_SECOND_SINT64)
-
 uint64_t Time::MonoFromSecNSec(uint64_t sec, uint64_t nsec) {
 
 	if (sec > MAX_SECOND_UINT64) {
 		throw Overflow("Mono");
 	}
 
-	uint64_t res = sec * NANOS_PER_SECOND_UINT64;
-	if (res > MAX_UINT64 - nsec) {
+	uint64_t res = sec * NANOS_PER_SECOND;
+	if (res > std::numeric_limits<uint64_t>::max() - nsec) {
 		throw Overflow("Mono");
 	}
 
@@ -306,25 +297,24 @@ Time::Time(int64_t wallSec, int32_t wallNsec, uint64_t mono, MonoclockID monoID)
     , d_wallNsec(wallNsec)
     , d_mono(mono)
     , d_monoID(monoID) {
-
-	while (d_wallNsec >= NANOS_PER_SECOND_SINT64) {
+	while (d_wallNsec >= int64_t(NANOS_PER_SECOND)) {
 		// For RelWithDebInfo this barrier is needed otherwise tests fails.
 		std::atomic_thread_fence(std::memory_order_acquire);
 		if (d_wallSec == std::numeric_limits<int64_t>::max()) {
 			throw Overflow("Wall");
 		}
 		d_wallSec += 1;
-		d_wallNsec -= NANOS_PER_SECOND_SINT64;
+		d_wallNsec -= NANOS_PER_SECOND;
 	}
 
-	while (d_wallNsec < 0) {
+	while (d_wallNsec < int64_t(0)) {
 		// For RelWithDebInfo this barrier is needed otherwise tests fails.
 		std::atomic_thread_fence(std::memory_order_acquire);
-		if (d_wallSec == MIN_SINT64) {
+		if (d_wallSec == std::numeric_limits<int64_t>::min()) {
 			throw Overflow("Wall");
 		}
 		d_wallSec -= 1;
-		d_wallNsec += NANOS_PER_SECOND_SINT64;
+		d_wallNsec += NANOS_PER_SECOND;
 	}
 }
 
@@ -335,7 +325,8 @@ Time Time::Add(const Duration &d) const {
 	int64_t  toAdd = d.Nanoseconds();
 	if ((d_monoID & HAS_MONO_BIT) != 0) {
 
-		if ((toAdd > 0 && d_mono > MAX_UINT64 - toAdd) ||
+		if ((toAdd > 0 && d_mono > std::numeric_limits<uint64_t>::max() - toAdd
+		    ) ||
 		    (toAdd < 0 && -toAdd > d_mono)) {
 			throw Overflow("Mono");
 		}
@@ -349,8 +340,8 @@ Time Time::Add(const Duration &d) const {
 		}
 	}
 
-	int64_t seconds = toAdd / NANOS_PER_SECOND_SINT64;
-	int64_t nanos   = toAdd - seconds * NANOS_PER_SECOND_SINT64;
+	int64_t seconds = toAdd / int64_t(NANOS_PER_SECOND);
+	int64_t nanos   = toAdd - seconds * int64_t(NANOS_PER_SECOND);
 
 	return Time(d_wallSec + seconds, d_wallNsec + nanos, mono, d_monoID);
 }
@@ -399,13 +390,13 @@ Duration Time::Reminder(const Duration &d) const {
 		return 0;
 	}
 
-	if (d.d_nanoseconds % NANOS_PER_SECOND == 0) {
+	if (d.d_nanoseconds % int64_t(NANOS_PER_SECOND) == 0) {
 		int64_t dSec = d.d_nanoseconds / NANOS_PER_SECOND;
 		return (sec % dSec) * NANOS_PER_SECOND + nsec;
 	}
 
 	// tests if we are a power of 10 of a nanoseconds and less than a second
-	if (d.d_nanoseconds < NANOS_PER_SECOND &&
+	if (d.d_nanoseconds < int64_t(NANOS_PER_SECOND) &&
 	    IsPowerOf10(d.d_nanoseconds) == true) {
 		return nsec % d.d_nanoseconds;
 	}
@@ -471,10 +462,10 @@ Duration Time::Sub(const Time &t) const {
 		throw Overflow("duration");
 	}
 
-	seconds *= NANOS_PER_SECOND_SINT64;
+	seconds *= int64_t(NANOS_PER_SECOND);
 
-	if ((nsecs > 0 && seconds > MAX_SINT64 - nsecs) ||
-	    (nsecs < 0 && seconds < MIN_SINT64 - nsecs)) {
+	if ((nsecs > 0 && seconds > std::numeric_limits<int64_t>::max() - nsecs) ||
+	    (nsecs < 0 && seconds < std::numeric_limits<int64_t>::min() - nsecs)) {
 		throw Overflow("duration");
 	}
 
@@ -572,6 +563,37 @@ std::ostream &operator<<(std::ostream &out, const fort::Duration &d) {
 
 std::ostream &operator<<(std::ostream &out, const fort::Time &t) {
 	return out << t.Format();
+}
+
+Time Time::FromTimePoint(const std::chrono::time_point<
+                         std::chrono::system_clock,
+                         std::chrono::nanoseconds> &tp) {
+	int64_t nsecs = tp.time_since_epoch().count();
+	return Time(nsecs / NANOS_PER_SECOND, nsecs % NANOS_PER_SECOND, 0, 0);
+}
+
+std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>
+Time::ToTimePoint() const {
+	if (IsInfinite()) {
+		throw Overflow("infinite");
+	}
+
+	if (d_wallSec > MAX_SECOND_SINT64 || d_wallNsec < MIN_SECOND_SINT64) {
+		throw Overflow("Wall");
+	}
+
+	int64_t nanos = d_wallSec * NANOS_PER_SECOND;
+
+	if (d_wallNsec > 0 &&
+	        nanos > (std::numeric_limits<int64_t>::max() - d_wallNsec) ||
+	    d_wallNsec < 0 &&
+	        nanos < std::numeric_limits<int64_t>::min() - d_wallNsec) {
+		throw Overflow("Wall");
+	}
+
+	return std::chrono::time_point<
+	    std::chrono::system_clock,
+	    std::chrono::nanoseconds>(std::chrono::nanoseconds(nanos + d_wallNsec));
 }
 
 } // namespace fort

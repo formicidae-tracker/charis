@@ -20,6 +20,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -448,6 +449,14 @@ public:
 	static Time FromUnix(int64_t seconds, int32_t nanoseconds);
 
 	/**
+	 * Creates a Time from
+	 * std::chrono::time_point<std::chrono::system_clock,std::chrono::nanoseconds>
+	 */
+	static Time FromTimePoint(const std::chrono::time_point<
+	                          std::chrono::system_clock,
+	                          std::chrono::nanoseconds> &clock);
+
+	/**
 	 * Creates a Time from a protobuf Timestamp and an external Monotonic clock
 	 * @param timestamp the `google.protobuf.Timestamp` message
 	 * @param nsecs the external monotonic value in nanoseconds
@@ -518,6 +527,9 @@ public:
 	 */
 	void ToTimestamp(google::protobuf::Timestamp *timestamp) const;
 
+	std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>
+	ToTimePoint() const;
+
 	/**
 	 * Default constructor to the system's epoch
 	 *
@@ -586,7 +598,7 @@ public:
 	bool Before(const Time &t) const;
 
 	/**
-	 * Reports if this time is the same than t 	 * * Python:
+	 * Reports if this time is the same than t
 	 *
 	 * @param t the Time to test against
 	 *
@@ -748,12 +760,24 @@ public:
 
 private:
 	// Number of nanoseconds in a second.
-	const static uint64_t NANOS_PER_SECOND = 1000000000ULL;
+	constexpr static uint64_t NANOS_PER_SECOND = 1000000000ULL;
 
 	// Number of nanoseconds in a millisecond.
-	const static uint64_t NANOS_PER_MILLISECOND = 1000000ULL;
+	constexpr static uint64_t NANOS_PER_MILLISECOND = 1000000ULL;
 	// Number of nanoseconds in a microsecond.
-	const static uint64_t NANOS_PER_MICROSECOND = 1000ULL;
+	constexpr static uint64_t NANOS_PER_MICROSECOND = 1000ULL;
+
+	// Maximal number of second represented in an uint64
+	constexpr static uint64_t MAX_SECOND_UINT64 =
+	    std::numeric_limits<uint64_t>::max() / NANOS_PER_SECOND;
+
+	// Maximal number of second represented in an int64
+	constexpr static int64_t MAX_SECOND_SINT64 =
+	    std::numeric_limits<int64_t>::max() / int64_t(NANOS_PER_SECOND);
+
+	// Minimal number of second represented in an int64
+	constexpr static int64_t MIN_SECOND_SINT64 =
+	    std::numeric_limits<int64_t>::min() / int64_t(NANOS_PER_SECOND);
 
 	Time(int64_t wallsec, int32_t wallnsec, uint64_t mono, MonoclockID ID);
 
