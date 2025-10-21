@@ -14,12 +14,13 @@ namespace gl {
 
 class CompiledText {
 public:
-	using Pool              = VAOPool<float, 6 * 20, 2, 2>;
-	using VertexArrayObject = Pool::VertexArrayObject;
+	static constexpr size_t FragmentSize = 6 * 20;
+	using Pool                           = VAOPool<float, 2, 2>;
+	using VertexArrayObject              = Pool::VertexArrayObject;
 
 	struct RenderArgs {
 		Eigen::Vector2i ViewportSize;
-		Eigen::Vector2i Position = {0, 0};
+		Eigen::Vector2i Position        = {0, 0};
 		Eigen::Vector4f Color           = {1.0, 1.0, 1.0, 1.0};
 		Eigen::Vector4f BackgroundColor = {0.0, 0.0, 0.0, 1.0};
 		float           Size            = 24.0;

@@ -164,7 +164,7 @@ CompiledText TextRenderer::compile(
 	}
 
 	for (const auto &[textureID, data] : dataPerTexture) {
-		for (size_t i = 0; i < data.size(); i += CompiledText::Pool::Size) {
+		for (size_t i = 0; i < data.size(); i += CompiledText::FragmentSize) {
 
 			auto  VAO = pool->Get();
 			GLint prebound, postbound;
@@ -172,7 +172,7 @@ CompiledText TextRenderer::compile(
 			glBindBuffer(GL_ARRAY_BUFFER, VAO->VBO);
 
 			size_t fragmentSize =
-			    std::min(data.size() - i, CompiledText::Pool::Size);
+			    std::min(data.size() - i, CompiledText::FragmentSize);
 
 			logger.Debug(
 			    "emit fragment",

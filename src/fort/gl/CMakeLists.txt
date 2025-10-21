@@ -42,8 +42,8 @@ target_include_directories(fort-gl INTERFACE ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(
 	fort-gl
-	PUBLIC GLEW::glew glfw OpenGL::GL Eigen3::Eigen
-	PRIVATE slog++::slog++ concurrentqueue Fontconfig::Fontconfig
+	PUBLIC GLEW::glew glfw OpenGL::GL Eigen3::Eigen slog++::slog++ concurrentqueue
+	PRIVATE  Fontconfig::Fontconfig
 			Freetype::Freetype
 )
 

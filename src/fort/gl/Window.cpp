@@ -1,6 +1,8 @@
 #include "Window.hpp"
+#include "fort/gl/Shader.hpp"
 #include <GLFW/glfw3.h>
 
+#include <slog++/Attribute.hpp>
 #include <slog++/Level.hpp>
 #include <slog++/slog++.hpp>
 #include <stdexcept>
@@ -133,7 +135,9 @@ Window::Window(int width, int height)
 		    nullptr,
 		    GL_TRUE
 		);
+		logger->Info("GL Output Enabled");
 	}
+
 #endif
 
 	SetWindowCallback();

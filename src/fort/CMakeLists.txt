@@ -2,7 +2,7 @@ if(FORT_BUILD_VIDEO OR NOT CHARIS_IMPORTED)
 	FetchContent_Declare(
 		cpptrace
 		GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
-		GIT_TAG v1.0.2 # <HASH or TAG>
+		GIT_TAG v1.0.4 # <HASH or TAG>
 	)
 	FetchContent_MakeAvailable(cpptrace)
 endif(FORT_BUILD_VIDEO OR NOT CHARIS_IMPORTED)
