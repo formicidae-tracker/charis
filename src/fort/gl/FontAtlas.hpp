@@ -27,6 +27,7 @@ struct CharTexture {
 	Eigen::Vector2f ScreenTopLeft, ScreenBottomRight, TextureTopLeft,
 	    TextureBottomRight;
 	float AdvanceX;
+	float AdvanceY;
 };
 
 class FontAtlas {

@@ -37,15 +37,15 @@ Eigen::Matrix4f buildProjectionMatrix(const CompiledText::RenderArgs &args) {
 	float vy = 2.0 / args.ViewportSize.y();
 	// clang-format off
 	res << vx * args.Size, 0.0, 0.0, vx * args.Position.x() - 1.0, // row 0
-	    0.0, vy * args.Size, 0.0, vy * args.Position.y() - 1.0, // row 1
+	    0.0, vy * args.Size, 0.0, -vy * args.Position.y() + 1.0, // row 1
 	    0.0, 0.0, 1.0, 0.0,                                    // row 2
 	    0.0, 0.0, 0.0, 1.0;                                    // row 3
 	// clang-format on
 	return res;
 }
 
-Eigen::Vector4f CompiledText::BoundingBox(float size) const {
-	return Eigen::Vector4f{0.0, d_hMin, d_width, d_hMax} * size;
+const Eigen::Vector2f &CompiledText::RenderSize() const {
+	return d_renderSize;
 }
 
 void CompiledText::Render(const RenderArgs &args) const {
@@ -119,7 +119,9 @@ std::string to_string(const Eigen::Vector2f &v) {
 }
 
 CompiledText TextRenderer::compile(
-    const std::vector<CharTexture> &characters, slog::Logger<3> &&logger
+    const std::vector<CharTexture> &characters,
+    bool                            vertical,
+    slog::Logger<3>               &&logger
 ) const {
 	static auto pool = std::make_shared<CompiledText::Pool>();
 	logger.Trace("compiling", slog::Int("size", characters.size()));
@@ -129,14 +131,23 @@ CompiledText TextRenderer::compile(
 
 	std::map<GLuint, VertexData> dataPerTexture;
 
-	res.d_width = 0.0;
-	res.d_hMin  = std::numeric_limits<float>::max();
-	res.d_hMax  = 0.0;
+	res.d_width           = 0.0;
+	res.d_height          = 0.0;
+	Eigen::Vector4f BBbox = {
+	    std::numeric_limits<float>::max(),
+	    std::numeric_limits<float>::max(),
+	    0.0,
+	    0.0
+	};
 
 	for (const auto &ch : characters) {
 		if (ch.TextureBottomRight == ch.TextureTopLeft) {
-			logger.Info("empty char");
-			res.d_width += ch.AdvanceX;
+			if (vertical == false) {
+				res.d_width += ch.AdvanceX;
+			} else {
+				res.d_height += ch.AdvanceY;
+			}
+
 			continue;
 		}
 
@@ -144,15 +155,17 @@ CompiledText TextRenderer::compile(
 		data.reserve(6 * 4 * characters.size());
 
 		Eigen::Vector2f scTL =
-		    ch.ScreenTopLeft + Eigen::Vector2f{res.d_width, 0};
+		    ch.ScreenTopLeft + Eigen::Vector2f{res.d_width, res.d_height};
 		Eigen::Vector2f scBR =
-		    ch.ScreenBottomRight + Eigen::Vector2f{res.d_width, 0};
+		    ch.ScreenBottomRight + Eigen::Vector2f{res.d_width, res.d_height};
 
 		const Eigen::Vector2f &txTL = ch.TextureTopLeft;
 		const Eigen::Vector2f &txBR = ch.TextureBottomRight;
 
-		res.d_hMin = std::min(res.d_hMin, scTL.y());
-		res.d_hMax = std::max(res.d_hMax, scBR.y());
+		BBbox.x() = std::min(BBbox.x(), scTL.x());
+		BBbox.y() = std::min(BBbox.y(), scTL.y());
+		BBbox.z() = std::max(BBbox.z(), scBR.x());
+		BBbox.w() = std::max(BBbox.w(), scBR.y());
 
 		data.insert(
 		    data.end(),
@@ -181,7 +194,16 @@ CompiledText TextRenderer::compile(
 		    )
 		);
 
-		res.d_width += ch.AdvanceX;
+		if (vertical == false) {
+			res.d_width += ch.AdvanceX;
+		} else {
+			res.d_height += ch.AdvanceY;
+		}
+	}
+	if (vertical == false) {
+		res.d_renderSize = {res.d_width, BBbox.w() - BBbox.y()};
+	} else {
+		res.d_renderSize = {BBbox.z() - BBbox.x(), res.d_height};
 	}
 
 	for (const auto &[textureID, data] : dataPerTexture) {

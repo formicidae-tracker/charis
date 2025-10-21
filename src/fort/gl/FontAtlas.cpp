@@ -311,6 +311,10 @@ CharTexture FontAtlas::load(char32_t code) {
 	        textureTopLeft +
 	        Eigen::Vector2f{face->glyph->bitmap.width, 0} / d_pageSize,
 	    .AdvanceX = (face->glyph->metrics.horiAdvance / (64 * d_fontSize)),
+	    .AdvanceY =
+	        FT_HAS_HORIZONTAL(face)
+	            ? (face->glyph->metrics.vertAdvance / (64.0 * d_fontSize))
+	            : face->size->metrics.height / (64.0 * d_fontSize)
 	};
 }
 

@@ -1,59 +1,133 @@
 #include "fort/gl/Shader.hpp"
 #include "fort/gl/TextRenderer.hpp"
-#include "fort/gl/VAOPool.hpp"
 #include "fort/gl/Window.hpp"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <GLFW/glfw3.h>
 #include <chrono>
+#include <codecvt>
 #include <cstdint>
+#include <locale>
 #include <memory>
 #include <slog++/Attribute.hpp>
 #include <slog++/slog++.hpp>
+static constexpr size_t font_size = 12;
+
+size_t utf8_length(const std::string &w) {
+	int len = 0;
+	for (char c : w) {
+		if ((c & 0xc0) != 0x80) {
+			++len;
+		}
+	}
+	return len;
+}
+
+bool chr_isvalid(char32_t c) {
+	if (c <= 0x7F)
+		return true;
+	if (0xC080 == c)
+		return true; // Accept 0xC080 as representation for '\0'
+	if (0xC280 <= c && c <= 0xCFBF)
+		return ((c & 0xE0C0) == 0xC080);
+	return false;
+	if (0xEDA080 <= c && c <= 0xEDBFBF)
+		return false; // Reject UTF-16 surrogates
+	if (0xE0A080 <= c && c <= 0xEFBFBF)
+		return ((c & 0xF0C0C0) == 0xE08080);
+	if (0xF0908080 <= c && c <= 0xF48FBFBF)
+		return ((c & 0xF8C0C0C0) == 0xF0808080);
+	return false;
+}
 
 struct StreamLine {
-	std::string data;
-	size_t      x, y;
+	float                  speed;
+	std::string            data;
+	float                  y;
+	fort::gl::CompiledText _text;
+
+	bool Done(size_t height) const {
+		return data.empty() ||
+		       (y - _text.RenderSize().y() * 2 * font_size) > height;
+	}
+
+	void Resample(fort::gl::TextRenderer &renderer) {
+		using Converter =
+		    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>;
+		static Converter converter;
+		size_t           total = std::rand() % 25 + 5;
+		data                   = "";
+		while (utf8_length(data) < total) {
+			char32_t ch = std::rand() % 127;
+			if (chr_isvalid(ch) == false) {
+				continue;
+			}
+			data += converter.to_bytes(std::basic_string<char32_t>(1, ch));
+		}
+
+		_text = renderer.Compile(data, true);
+		y     = std::rand() % 20 - 20;
+		//-_text.RenderSize().y();
+		speed = 40.0 + (std::rand() % 200) / 10.0f;
+	}
+
+	void Render(const Eigen::Vector2i &vpSize, size_t x) const {
+		_text.Render({
+		    .ViewportSize = vpSize,
+		    .Position     = {x, y},
+		    .Color{0.0f, 1.0f, 0.0f, 1.0f},
+		});
+	}
 };
 
 class Window : public fort::gl::Window {
-	std::atomic<bool>      d_continue = true;
-	fort::gl::TextRenderer d_renderer;
-	fort::gl::CompiledText d_text;
+	std::atomic<bool>                     d_continue = true;
+	fort::gl::TextRenderer                d_renderer;
+	std::vector<StreamLine>               d_seeds;
+	std::chrono::system_clock::time_point d_last;
 
 public:
 	Window(int width, int height)
 	    : fort::gl::Window{width, height, "gl-matrix"}
 	    , d_renderer{"UbuntuMono", 24} {
-		d_text = d_renderer.Compile("Hello World!");
+		updateStreamLineSeeds();
+		d_last = std::chrono::system_clock::now();
 	}
 
 	void Draw() override {
-		std::time_t now = std::chrono::system_clock::to_time_t(
-		    std::chrono::system_clock::now()
-		);
-
-		d_text = d_renderer.Compile(std::ctime(&now));
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		d_text.Render(fort::gl::CompiledText::RenderArgs{
-		    .ViewportSize = ViewportSize(),
-		    .Position     = {20, 20},
-		    .Size         = 24.0,
-		});
-	}
+		float x   = 0.0f;
+		auto  now = std::chrono::system_clock::now();
+		auto  ellapsed =
+		    std::chrono::duration_cast<std::chrono::milliseconds>(now - d_last)
+		        .count() /
+		    1000.0f;
+		d_last = now;
 
-	void OnSizeChanged(int width, int height) override {
-		fort::gl::Window::OnSizeChanged(width, height);
+		for (auto &s : d_seeds) {
+			s.y += s.speed * ellapsed;
+
+			if (s.Done(ViewportSize().y())) {
+				s.Resample(d_renderer);
+			}
+			s.Render(ViewportSize(), x);
+			x += font_size;
+		}
 	}
 
 	bool Continue() const {
 		return d_continue.load();
 	}
 
+	void OnSizeChanged(int width, int height) override {
+		fort::gl::Window::OnSizeChanged(width, height);
+		updateStreamLineSeeds();
+	}
+
 	void OnKey(int key, int scancode, int action, int mods) override {
 		fort::gl::Window::OnKey(key, scancode, action, mods);
 		if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) {
-
 			d_continue.store(false);
 		}
 	}
@@ -67,6 +141,17 @@ public:
 	// void OnScroll(double xOffset, double yOffset) {}
 
 	// void OnScaleChanged(float x, float y) {}
+
+	void updateStreamLineSeeds() {
+		size_t seeds = ViewportSize().x() / font_size + 1;
+		d_seeds.resize(seeds);
+		for (auto &s : d_seeds) {
+			if (s.Done(ViewportSize().y())) {
+				s.Resample(d_renderer);
+			}
+		}
+		slog::Info("seeds updated", slog::Int("size", d_seeds.size()));
+	}
 };
 
 int main() {

@@ -27,7 +27,7 @@ public:
 
 	void Render(const RenderArgs &args) const;
 
-	Eigen::Vector4f BoundingBox(float size) const;
+	const Eigen::Vector2f &RenderSize() const;
 
 	CompiledText();
 
@@ -44,7 +44,8 @@ private:
 
 	std::vector<TextFragment> d_fragments;
 	GLuint                    d_program;
-	float                     d_width, d_hMin, d_hMax;
+	float                     d_width, d_height;
+	Eigen::Vector2f           d_renderSize;
 	slog::Logger<3>           d_logger;
 };
 
@@ -54,17 +55,21 @@ public:
 	    const std::string &fontName, size_t fontSize, size_t pageSize = 512
 	);
 
-	template <typename Str> CompiledText Compile(Str &&str) noexcept {
+	template <typename Str>
+	CompiledText Compile(Str &&str, bool vertical = false) noexcept {
 		auto characters = d_atlas.Get(std::forward<Str>(str));
 		return compile(
 		    characters,
+		    vertical,
 		    d_logger.With(slog::String("text", std::forward<Str>(str)))
 		);
 	}
 
 private:
 	CompiledText compile(
-	    const std::vector<CharTexture> &characters, slog::Logger<3> &&logger
+	    const std::vector<CharTexture> &characters,
+	    bool                            vertical,
+	    slog::Logger<3>               &&logger
 	) const;
 
 	FontAtlas       d_atlas;
