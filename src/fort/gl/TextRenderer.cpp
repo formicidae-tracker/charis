@@ -122,7 +122,7 @@ CompiledText TextRenderer::compile(
     const std::vector<CharTexture> &characters, slog::Logger<3> &&logger
 ) const {
 	static auto pool = std::make_shared<CompiledText::Pool>();
-	logger.Debug("compiling", slog::Int("size", characters.size()));
+	logger.Trace("compiling", slog::Int("size", characters.size()));
 	CompiledText res{d_program, std::move(logger)};
 
 	using VertexData = std::vector<float>;
@@ -135,7 +135,7 @@ CompiledText TextRenderer::compile(
 
 	for (const auto &ch : characters) {
 		if (ch.TextureBottomRight == ch.TextureTopLeft) {
-			logger.Debug("empty char");
+			logger.Info("empty char");
 			res.d_width += ch.AdvanceX;
 			continue;
 		}

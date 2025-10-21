@@ -262,10 +262,8 @@ CharTexture FontAtlas::load(char32_t code) {
 	    face->glyph->bitmap_top - int(face->glyph->bitmap.rows),
 	};
 	Eigen::Vector2f screenBottomRight =
-	    screenTopLeft + (Eigen::Vector2f{
-	                        face->glyph->bitmap.width,
-	                        face->glyph->bitmap.rows,
-	                    });
+	    screenTopLeft +
+	    (Eigen::Vector2f{face->glyph->bitmap.width, face->glyph->bitmap.rows});
 
 	Eigen::Vector2f textureTopLeft =
 	    placement.Position.cast<float>() + Eigen::Vector2f{1.0, 1.0};
@@ -312,7 +310,7 @@ CharTexture FontAtlas::load(char32_t code) {
 	    .TextureBottomRight =
 	        textureTopLeft +
 	        Eigen::Vector2f{face->glyph->bitmap.width, 0} / d_pageSize,
-	    .AdvanceX = (face->glyph->advance.x / (64 * d_fontSize)),
+	    .AdvanceX = (face->glyph->metrics.horiAdvance / (64 * d_fontSize)),
 	};
 }
 
