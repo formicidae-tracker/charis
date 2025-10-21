@@ -2,7 +2,6 @@
 
 #include <cctype>
 #include <ios>
-#include <iterator>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -46,7 +45,8 @@ public:
 	    const std::string &reason
 	) noexcept
 	    : std::runtime_error{
-	          "could not parse " + name + "='" + value + "': " + reason} {}
+	          "could not parse " + name + "='" + value + "': " + reason
+	      } {}
 };
 
 #ifdef CHARIS_OPTIONS_USE_MAGIC_ENUM
