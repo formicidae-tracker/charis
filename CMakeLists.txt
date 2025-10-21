@@ -49,3 +49,5 @@ if(NOT CHARIS_IMPORTED)
 endif(NOT CHARIS_IMPORTED)
 
 add_subdirectory(src/fort)
+
+add_subdirectory(examples)
