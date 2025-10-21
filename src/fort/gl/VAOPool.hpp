@@ -64,15 +64,15 @@ public:
 				    std::to_string(ColSize) + ")"
 				);
 			}
-			Logger.Debug("binding VAO");
+			Logger.Trace("binding VAO");
 			glBindVertexArray(VAO);
 			glBindBuffer(GL_ARRAY_BUFFER, VBO);
 			defer {
-				Logger.Debug("unbinding VAO");
+				Logger.Trace("unbinding VAO");
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
 			};
-			Logger.Debug("buffering VAO");
+			Logger.Trace("buffering VAO");
 			glBufferData(GL_ARRAY_BUFFER, sizeof(T) * len, data, type);
 			enableVertexAttrib(0, 0, ColSizes...);
 		}
@@ -81,7 +81,7 @@ public:
 		template <typename... U>
 		void
 		enableVertexAttrib(size_t idx, size_t start, size_t size, U... rest) {
-			Logger.Debug(
+			Logger.Trace(
 			    "enabling attribs for VAO",
 			    slog::Int("start", start),
 			    slog::Int("size", size)

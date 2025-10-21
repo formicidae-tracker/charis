@@ -1,4 +1,5 @@
 #include "fort/gl/Shader.hpp"
+#include "fort/gl/TextRenderer.hpp"
 #include "fort/gl/VAOPool.hpp"
 #include "fort/gl/Window.hpp"
 
@@ -25,38 +26,30 @@ const char *fragmentShaderSource =
     "}\n\0";
 
 class Window : public fort::gl::Window {
-	std::atomic<bool> d_continue = true;
-	using VAOPool                = fort::gl::VAOPool<float, 3>;
-	std::shared_ptr<VAOPool>        d_pool;
-	VAOPool::VertexArrayObject::Ptr d_triangle;
-	GLuint                          d_program;
+	std::atomic<bool>      d_continue = true;
+	fort::gl::TextRenderer d_renderer;
+	fort::gl::CompiledText d_text;
 
 public:
 	Window(int width, int height)
-	    : fort::gl::Window{width, height} {
-		d_pool           = std::make_shared<VAOPool>();
-		d_triangle       = d_pool->Get();
-		// clang-format off
-		float vertices[] = {
-		    -0.5f, -0.5f, 0.0f, //
-		     0.5f, -0.5f, 0.0f, //
-		     0.0f,  0.5f, 0.0f //
-		};
-		// clang-format on
-		d_triangle->BindBuffer(GL_STATIC_DRAW, vertices, 9);
-		d_program =
-		    fort::gl::CompileProgram(vertexShaderSource, fragmentShaderSource);
-		slog::Info("shader program", slog::Int("programID", d_program));
+	    : fort::gl::Window{width, height}
+	    , d_renderer{"UbuntuMono", 24} {
+		d_text = d_renderer.Compile("Hello World!");
 	}
 
 	void Draw() override {
+		std::time_t now = std::chrono::system_clock::to_time_t(
+		    std::chrono::system_clock::now()
+		);
+
+		d_text = d_renderer.Compile(std::ctime(&now));
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glUseProgram(d_program);
-		glBindVertexArray(d_triangle->VAO);
-
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-		glBindVertexArray(0);
+		d_text.Render(fort::gl::CompiledText::RenderArgs{
+		    .ViewportSize = {1024, 720},
+		    .Position     = {20, 20},
+		    .Size         = 24.0,
+		});
 	}
 
 	void OnSizeChanged(int width, int height) override {}
@@ -85,11 +78,12 @@ public:
 };
 
 int main() {
-	slog::DefaultLogger().From(slog::Level::Debug);
+	slog::DefaultLogger().From(slog::Level::Info);
 	auto window = std::make_unique<Window>(1024, 720);
 	std::array<std::chrono::microseconds, 64> ellapsed;
 	size_t                                    i = 0;
 	while (window->Continue()) {
+
 		window->Update();
 		auto start = std::chrono::steady_clock::now();
 		window->Process();
@@ -105,7 +99,7 @@ int main() {
 				max = std::max(e.count(), max);
 			}
 
-			slog::Trace(
+			slog::Info(
 			    "duration",
 			    slog::Float("mean_ms", float(mean) / 64000.0f),
 			    slog::Float("min_ms", min / 1000.0f),

@@ -81,7 +81,7 @@ private:
 
 	AtlasPage buildPage() const noexcept;
 
-	slog::Logger<3> loggerForCode(char32_t code) const noexcept;
+	slog::Logger<4> loggerForCode(char32_t code) const noexcept;
 
 	std::tuple<Placement, GLuint> place(const Point &size);
 
@@ -90,7 +90,7 @@ private:
 	FacePtr                d_face;
 	Atlas                  d_atlas;
 	std::vector<AtlasPage> d_pages;
-	slog::Logger<1>        d_logger;
+	slog::Logger<2>        d_logger;
 };
 
 } // namespace gl

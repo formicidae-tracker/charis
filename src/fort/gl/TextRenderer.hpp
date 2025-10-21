@@ -14,9 +14,8 @@ namespace gl {
 
 class CompiledText {
 public:
-	static constexpr size_t FragmentSize = 6 * 20;
-	using Pool                           = VAOPool<float, 2, 2>;
-	using VertexArrayObject              = Pool::VertexArrayObject;
+	using Pool              = VAOPool<float, 2, 2>;
+	using VertexArrayObject = Pool::VertexArrayObject;
 
 	struct RenderArgs {
 		Eigen::Vector2i ViewportSize;
@@ -41,16 +40,19 @@ private:
 		VertexArrayObject::Ptr VAO;
 	};
 
-	CompiledText(GLuint program);
+	CompiledText(GLuint program, slog::Logger<3> &&logger);
 
 	std::vector<TextFragment> d_fragments;
 	GLuint                    d_program;
 	float                     d_width, d_hMin, d_hMax;
+	slog::Logger<3>           d_logger;
 };
 
 class TextRenderer {
 public:
-	TextRenderer(const std::string &fontName, size_t fontSize, size_t pageSize);
+	TextRenderer(
+	    const std::string &fontName, size_t fontSize, size_t pageSize = 512
+	);
 
 	template <typename Str> CompiledText Compile(Str &&str) noexcept {
 		auto characters = d_atlas.Get(std::forward<Str>(str));
@@ -62,13 +64,12 @@ public:
 
 private:
 	CompiledText compile(
-	    const std::vector<CharTexture> &characters,
-	    const slog::Logger<2>          &logger
+	    const std::vector<CharTexture> &characters, slog::Logger<3> &&logger
 	) const;
 
 	FontAtlas       d_atlas;
 	GLuint          d_program;
-	slog::Logger<1> d_logger;
+	slog::Logger<2> d_logger;
 };
 
 } // namespace gl

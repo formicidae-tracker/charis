@@ -142,7 +142,15 @@ FontAtlas::FontAtlas(
     : d_pageSize{pageSize}
     , d_fontSize{float(fontSize)}
     , d_face{nullptr}
-    , d_logger{slog::With(slog::String("group", "FontAtlas"))} {
+    , d_logger{slog::With(
+          slog::String("group", "FontAtlas"),
+          slog::Group(
+              "font",
+              slog::String("name", fontName),
+              slog::Float("size", float(fontSize)),
+              slog::Int("pageSize", pageSize)
+          )
+      )} {
 	static FTLibrary  ft;
 	static FontConfig fc;
 	d_face = ft.Open(fc.Locate(fontName));
@@ -165,11 +173,7 @@ const CharTexture &FontAtlas::Get(char32_t code) noexcept {
 
 		return d_atlas.at(code);
 	} catch (const std::exception &e) {
-		loggerForCode(code).Error(
-		    "could not load glyph",
-		    slog::Int("code", code),
-		    slog::Err(e)
-		);
+		loggerForCode(code).Error("could not load glyph", slog::Err(e));
 
 		return Get(char32_t(' ')); // return a space.
 	}
@@ -253,6 +257,23 @@ CharTexture FontAtlas::load(char32_t code) {
 	    face->glyph->bitmap.buffer
 	);
 
+	Eigen::Vector2f screenTopLeft{
+	    face->glyph->bitmap_left,
+	    face->glyph->bitmap_top - int(face->glyph->bitmap.rows),
+	};
+	Eigen::Vector2f screenBottomRight =
+	    screenTopLeft + (Eigen::Vector2f{
+	                        face->glyph->bitmap.width,
+	                        face->glyph->bitmap.rows,
+	                    });
+
+	Eigen::Vector2f textureTopLeft =
+	    placement.Position.cast<float>() + Eigen::Vector2f{1.0, 1.0};
+
+	screenTopLeft /= d_fontSize;
+	screenBottomRight /= d_fontSize;
+	textureTopLeft /= d_pageSize;
+
 #ifndef NDEBUG
 	loggerForCode(code).Debug(
 	    "new glyph in atlas",
@@ -263,32 +284,28 @@ CharTexture FontAtlas::load(char32_t code) {
 	        slog::Int("y", placement.Position.y() + 1)
 	    ),
 	    slog::Group(
+	        "screen",
+	        slog::Float("screenTopLeft.x", screenTopLeft.x()),
+	        slog::Float("screenTopLeft.y", screenTopLeft.y()),
+	        slog::Float("screenBottomRight.x", screenBottomRight.x()),
+	        slog::Float("screenBottomRight.y", screenBottomRight.y())
+	    ),
+	    slog::Group(
 	        "bitmap",
 	        slog::Int("width", face->glyph->bitmap.width),
 	        slog::Int("rows", face->glyph->bitmap.rows),
-	        slog::Int("pitch", face->glyph->bitmap.pitch)
+	        slog::Int("pitch", face->glyph->bitmap.pitch),
+	        slog::Int("top", face->glyph->bitmap_top),
+	        slog::Int("left", face->glyph->bitmap_left)
 	    ),
 	    slog::Bool("rotated", placement.Rotated)
 	);
 #endif
-	Eigen::Vector2f screenTopLeft{
-	    face->glyph->bitmap_left,
-	    face->glyph->bitmap_top - face->glyph->bitmap.rows,
-	};
-
-	Eigen::Vector2f textureTopLeft =
-	    placement.Position.cast<float>() + Eigen::Vector2f{1.0, 1.0};
-
-	screenTopLeft /= d_fontSize;
-	textureTopLeft /= d_pageSize;
 
 	return CharTexture{
 	    .Texture           = texture,
 	    .ScreenTopLeft     = screenTopLeft,
-	    .ScreenBottomRight = screenTopLeft + (Eigen::Vector2f{
-	                                             face->glyph->bitmap.width,
-	                                             face->glyph->bitmap.rows,
-	                                         }) / d_fontSize,
+	    .ScreenBottomRight = screenBottomRight,
 	    .TextureTopLeft =
 	        textureTopLeft +
 	        Eigen::Vector2f{0, face->glyph->bitmap.rows} / d_pageSize,
@@ -325,7 +342,7 @@ FontAtlas::AtlasPage FontAtlas::buildPage() const noexcept {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	d_logger.Debug("build new page");
+	d_logger.Debug("new page", slog::Int("textureID", texture));
 
 	return {
 	    .Texture = texture,
@@ -357,7 +374,7 @@ std::tuple<FontAtlas::Placement, GLuint> FontAtlas::place(const Point &size) {
 	};
 }
 
-slog::Logger<3> FontAtlas::loggerForCode(char32_t code) const noexcept {
+slog::Logger<4> FontAtlas::loggerForCode(char32_t code) const noexcept {
 	std::u32string str;
 	str += code;
 	return d_logger.With(

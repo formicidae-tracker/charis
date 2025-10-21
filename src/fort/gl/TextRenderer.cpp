@@ -1,24 +1,30 @@
-#include "concurrentqueue.h"
-#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
-#include <type_traits>
 
+#include "FontAtlas.hpp"
 #include "Shader.hpp"
 #include "TextRenderer.hpp"
-#include "FontAtlas.hpp"
 #include <fort/utils/Defer.hpp>
+#include <slog++/slog++.hpp>
+#include <sstream>
 
 #include "fort-gl_rc.h"
 
 namespace fort {
 namespace gl {
 
-CompiledText::CompiledText() {}
+CompiledText::CompiledText()
+    : d_program{0}
+    , d_logger{slog::With(
+          slog::String("group", "CompiledText"),
+          slog::String("font", ""),
+          slog::String("text", "")
+      )} {}
 
-CompiledText::CompiledText(GLuint program)
-    : d_program(program) {}
+CompiledText::CompiledText(GLuint program, slog::Logger<3> &&logger)
+    : d_program(program)
+    , d_logger{std::move(logger)} {}
 
 Eigen::Matrix4f buildProjectionMatrix(const CompiledText::RenderArgs &args) {
 	Eigen::Matrix4f res;
@@ -27,13 +33,14 @@ Eigen::Matrix4f buildProjectionMatrix(const CompiledText::RenderArgs &args) {
 	// 1. multiply per desired fontSize
 	// 2. add position
 	// 3. transform to generalized coordinates.
-	res << 2.0 * args.Size / args.ViewportSize.x(), 0.0, 0.0,
-	    2.0 * args.Position.x() / args.ViewportSize.x() - 1.0, // row 0
-	    0.0, 2.0 * args.Size / args.ViewportSize.y(), 0.0,
-	    2.0 * args.Position.y() / args.ViewportSize.y() - 1.0, // row 1
+	float vx = 2.0 / args.ViewportSize.x();
+	float vy = 2.0 / args.ViewportSize.y();
+	// clang-format off
+	res << vx * args.Size, 0.0, 0.0, vx * args.Position.x() - 1.0, // row 0
+	    0.0, vy * args.Size, 0.0, vy * args.Position.y() - 1.0, // row 1
 	    0.0, 0.0, 1.0, 0.0,                                    // row 2
 	    0.0, 0.0, 0.0, 1.0;                                    // row 3
-
+	// clang-format on
 	return res;
 }
 
@@ -45,8 +52,6 @@ void CompiledText::Render(const RenderArgs &args) const {
 	if (d_fragments.empty()) {
 		return;
 	}
-
-	const auto &logger = slog::With(slog::String("group", "CompiledText"));
 
 	glUseProgram(d_program);
 	auto projection = glGetUniformLocation(d_program, "projection");
@@ -64,10 +69,11 @@ void CompiledText::Render(const RenderArgs &args) const {
 	glActiveTexture(GL_TEXTURE0);
 
 	for (const auto &f : d_fragments) {
-		logger.Debug(
+		d_logger.Trace(
 		    "rendering fragment",
 		    slog::Int("VAO", f.VAO->VAO),
-		    slog::Int("elements", f.Elements)
+		    slog::Int("elements", f.Elements),
+		    slog::Int("total", d_fragments.size())
 		);
 
 		glBindTexture(GL_TEXTURE_2D, f.Texture);
@@ -81,7 +87,15 @@ TextRenderer::TextRenderer(
     const std::string &fontName, size_t fontSize, size_t pageSize
 )
     : d_atlas{fontName, fontSize, pageSize}
-    , d_logger{slog::With(slog::String("group", "TextRenderer"))} {
+    , d_logger{slog::With(
+          slog::String("group", "TextRenderer"),
+          slog::Group(
+              "font",
+              slog::String("name", fontName.c_str()),
+              slog::Int("size", fontSize),
+              slog::Int("pageSize", pageSize)
+          )
+      )} {
 	d_atlas.LoadASCII();
 	d_program = CompileProgram(
 	    std::string{
@@ -98,12 +112,18 @@ TextRenderer::TextRenderer(
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
+std::string to_string(const Eigen::Vector2f &v) {
+	std::ostringstream oss;
+	oss << v.transpose();
+	return oss.str();
+}
+
 CompiledText TextRenderer::compile(
-    const std::vector<CharTexture> &characters, const slog::Logger<2> &logger
+    const std::vector<CharTexture> &characters, slog::Logger<3> &&logger
 ) const {
 	static auto pool = std::make_shared<CompiledText::Pool>();
-
-	CompiledText res{d_program};
+	logger.Debug("compiling", slog::Int("size", characters.size()));
+	CompiledText res{d_program, std::move(logger)};
 
 	using VertexData = std::vector<float>;
 
@@ -115,6 +135,7 @@ CompiledText TextRenderer::compile(
 
 	for (const auto &ch : characters) {
 		if (ch.TextureBottomRight == ch.TextureTopLeft) {
+			logger.Debug("empty char");
 			res.d_width += ch.AdvanceX;
 			continue;
 		}
@@ -122,81 +143,59 @@ CompiledText TextRenderer::compile(
 		auto &data = dataPerTexture[ch.Texture];
 		data.reserve(6 * 4 * characters.size());
 
-		Eigen::Vector2f screenTopLeft =
+		Eigen::Vector2f scTL =
 		    ch.ScreenTopLeft + Eigen::Vector2f{res.d_width, 0};
-		Eigen::Vector2f screenBottomRight =
+		Eigen::Vector2f scBR =
 		    ch.ScreenBottomRight + Eigen::Vector2f{res.d_width, 0};
 
-		res.d_hMin = std::min(res.d_hMin, screenTopLeft.y());
-		res.d_hMax = std::max(res.d_hMax, screenBottomRight.y());
+		const Eigen::Vector2f &txTL = ch.TextureTopLeft;
+		const Eigen::Vector2f &txBR = ch.TextureBottomRight;
+
+		res.d_hMin = std::min(res.d_hMin, scTL.y());
+		res.d_hMax = std::max(res.d_hMax, scBR.y());
 
 		data.insert(
 		    data.end(),
 		    {
-		        screenTopLeft.x(),         // topLeft
-		        screenTopLeft.y(),         //
-		        ch.TextureTopLeft.x(),     //
-		        ch.TextureTopLeft.y(),     //
-		        screenBottomRight.x(),     // topRight
-		        screenTopLeft.y(),         //
-		        ch.TextureBottomRight.x(), //
-		        ch.TextureTopLeft.y(),     //
-		        screenTopLeft.x(),         // bottomLeft
-		        screenBottomRight.y(),     //
-		        ch.TextureTopLeft.x(),     //
-		        ch.TextureBottomRight.y(), //
-		        screenBottomRight.x(),     // topRight
-		        screenTopLeft.y(),         //
-		        ch.TextureBottomRight.x(), //
-		        ch.TextureTopLeft.y(),     //
-		        screenTopLeft.x(),         // bottomLeft
-		        screenBottomRight.y(),     //
-		        ch.TextureTopLeft.x(),     //
-		        ch.TextureBottomRight.y(), //
-		        screenBottomRight.x(),     // bottomRight
-		        screenBottomRight.y(),     //
-		        ch.TextureBottomRight.x(), //
-		        ch.TextureBottomRight.y(), //
+		        scTL.x(), scTL.y(), txTL.x(), txTL.y(), // topLeft
+		        scBR.x(), scTL.y(), txBR.x(), txTL.y(), // topRight
+		        scTL.x(), scBR.y(), txTL.x(), txBR.y(), // bottomLeft
+		        scBR.x(), scTL.y(), txBR.x(), txTL.y(), // topRight
+		        scTL.x(), scBR.y(), txTL.x(), txBR.y(), // bottomLeft
+		        scBR.x(), scBR.y(), txBR.x(), txBR.y(), // bottomRight
 		    }
+		);
+		d_logger.Trace(
+		    "added character",
+		    slog::String("screenTopLeft", to_string(scTL)),
+		    slog::String("screenBottomRight", to_string(scBR)),
+		    slog::Group(
+		        "ch",
+		        slog::String("textureTopLeft", to_string(txTL)),
+		        slog::String("textureBottomRight", to_string(txBR)),
+		        slog::String("screenTopLeft", to_string(ch.ScreenTopLeft)),
+		        slog::String(
+		            "screenBottomRight",
+		            to_string(ch.ScreenBottomRight)
+		        )
+		    )
 		);
 
 		res.d_width += ch.AdvanceX;
 	}
 
 	for (const auto &[textureID, data] : dataPerTexture) {
-		for (size_t i = 0; i < data.size(); i += CompiledText::FragmentSize) {
 
-			auto  VAO = pool->Get();
-			GLint prebound, postbound;
+		auto  VAO = pool->Get();
+		GLint prebound, postbound;
 
-			glBindBuffer(GL_ARRAY_BUFFER, VAO->VBO);
+		VAO->BindBuffer(GL_STATIC_DRAW, data.data(), data.size());
 
-			size_t fragmentSize =
-			    std::min(data.size() - i, CompiledText::FragmentSize);
-
-			logger.Debug(
-			    "emit fragment",
-			    slog::Int("textureID", textureID),
-			    slog::Int("elements", fragmentSize / 4),
-			    slog::Int("VAO", VAO->VAO),
-			    slog::Int("VBO", VAO->VBO)
-			);
-
-			glBufferSubData(
-			    GL_ARRAY_BUFFER,
-			    0,
-			    sizeof(float) * fragmentSize,
-			    &(data[i])
-			);
-
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-			res.d_fragments.push_back(CompiledText::TextFragment{
-			    .Texture  = textureID,
-			    .Elements = fragmentSize / 4,
-			    .VAO      = std::move(VAO),
-			});
-		}
+		res.d_fragments.push_back(CompiledText::TextFragment{
+		    .Texture  = textureID,
+		    .Elements = data.size() / 4,
+		    .VAO      = std::move(VAO),
+		});
 	}
 
 	return res;
