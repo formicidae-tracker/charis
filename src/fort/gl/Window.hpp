@@ -10,6 +10,8 @@
 
 #include <slog++/slog++.hpp>
 
+#include <Eigen/Dense>
+
 namespace fort {
 namespace gl {
 
@@ -21,7 +23,7 @@ public:
 	using Ptr    = std::unique_ptr<Window>;
 	using DrawFn = std::function<void()>;
 
-	Window(int width, int height);
+	Window(int width, int height, const std::string &name);
 	virtual ~Window();
 
 	bool WantClose();
@@ -30,6 +32,10 @@ public:
 	void ClearUpdate();
 
 	void Process();
+
+	inline const Eigen::Vector2i &ViewportSize() const {
+		return d_viewportSize;
+	}
 
 	virtual void Draw() = 0;
 
@@ -48,7 +54,8 @@ private:
 	using GLFWWindowPtr =
 	    std::unique_ptr<::GLFWwindow, void (*)(::GLFWwindow *)>;
 
-	static GLFWWindowPtr OpenWindow(int width, int height);
+	static GLFWWindowPtr
+	OpenWindow(int width, int height, const std::string &name);
 
 	void InitOpenGL();
 	void SetWindowCallback();
@@ -57,6 +64,7 @@ private:
 	GLFWWindowPtr                d_window;
 	slog::Logger<1>              d_logger;
 	std::atomic<bool>            d_needDraw;
+	Eigen::Vector2i              d_viewportSize;
 };
 
 } // namespace gl

@@ -10,20 +10,10 @@
 #include <slog++/Attribute.hpp>
 #include <slog++/slog++.hpp>
 
-const char *vertexShaderSource =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-const char *fragmentShaderSource =
-    "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
+struct StreamLine {
+	std::string data;
+	size_t      x, y;
+};
 
 class Window : public fort::gl::Window {
 	std::atomic<bool>      d_continue = true;
@@ -32,7 +22,7 @@ class Window : public fort::gl::Window {
 
 public:
 	Window(int width, int height)
-	    : fort::gl::Window{width, height}
+	    : fort::gl::Window{width, height, "gl-matrix"}
 	    , d_renderer{"UbuntuMono", 24} {
 		d_text = d_renderer.Compile("Hello World!");
 	}
@@ -46,13 +36,15 @@ public:
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		d_text.Render(fort::gl::CompiledText::RenderArgs{
-		    .ViewportSize = {1024, 720},
+		    .ViewportSize = ViewportSize(),
 		    .Position     = {20, 20},
 		    .Size         = 24.0,
 		});
 	}
 
-	void OnSizeChanged(int width, int height) override {}
+	void OnSizeChanged(int width, int height) override {
+		fort::gl::Window::OnSizeChanged(width, height);
+	}
 
 	bool Continue() const {
 		return d_continue.load();
@@ -78,7 +70,7 @@ public:
 };
 
 int main() {
-	slog::DefaultLogger().From(slog::Level::Info);
+	slog::DefaultLogger().From(slog::Level::Debug);
 	auto window = std::make_unique<Window>(1024, 720);
 	std::array<std::chrono::microseconds, 64> ellapsed;
 	size_t                                    i = 0;

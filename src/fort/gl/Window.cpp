@@ -110,11 +110,17 @@ void logGL(
 	);
 }
 
-Window::Window(int width, int height)
+Window::Window(int width, int height, const std::string &name)
     : d_context{std::make_unique<GLFWContext>()}
-    , d_window{OpenWindow(width, height)}
+    , d_window{OpenWindow(width, height, name)}
     , d_logger{slog::With(slog::String("group", "gl::Window"))}
     , d_needDraw(true) {
+
+	glfwGetWindowSize(
+	    d_window.get(),
+	    &d_viewportSize.data()[0],
+	    &d_viewportSize.data()[1]
+	);
 
 	InitOpenGL();
 
@@ -146,7 +152,8 @@ Window::Window(int width, int height)
 // needed as we have to define GLFWContext before.
 Window::~Window() = default;
 
-Window::GLFWWindowPtr Window::OpenWindow(int width, int height) {
+Window::GLFWWindowPtr
+Window::OpenWindow(int width, int height, const std::string &name) {
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -163,7 +170,7 @@ Window::GLFWWindowPtr Window::OpenWindow(int width, int height) {
 
 	// glfwWindowHint(GLFW_SAMPLES, 4);
 
-	auto window = glfwCreateWindow(width, height, "apollo", NULL, NULL);
+	auto window = glfwCreateWindow(width, height, name.c_str(), NULL, NULL);
 	if (!window) {
 		throw_glfw_error("could not open window");
 	}
@@ -261,6 +268,7 @@ void Window::OnSizeChanged(int width, int height) {
 	    slog::Int("width", width),
 	    slog::Int("height", height)
 	);
+	d_viewportSize = {width, height};
 
 	glViewport(0, 0, width, height);
 	Update();
