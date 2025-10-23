@@ -22,6 +22,13 @@ function(add_resources)
 	set(RC_DEPENDS "")
 	set(header_content "#pragma once\n\n#include <stddef.h>\n\n")
 
+	if(WIN32)
+		set(NULL_DEVICE "${CMAKE_CURRENT_BINARY_DIR}/empty.bin")
+		file(WRITE "${NULL_DEVICE}" "")
+	else()
+		set(NULL_DEVICE "/dev/null")
+	endif()
+
 	foreach(r ${ARGS_RESOURCES})
 		string(MAKE_C_IDENTIFIER ${r} r_identifier)
 		set(output "${CMAKE_CURRENT_BINARY_DIR}/${r_identifier}.o")
@@ -29,8 +36,9 @@ function(add_resources)
 			OUTPUT ${output}
 			COMMAND ${CMAKE_LINKER} --relocatable --format binary --output
 					${output} ${r}
-			COMMAND ${CMAKE_OBJCOPY} --add-section .note.GNU-stack=/dev/null
-					--set-section-flags .note.GNU-stack=alloc,readonly ${output}
+			COMMAND
+				${CMAKE_OBJCOPY} --add-section .note.GNU-stack=${NULL_DEVICE}
+				--set-section-flags .note.GNU-stack=alloc,readonly ${output}
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${r}
 		)
