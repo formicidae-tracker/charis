@@ -20,7 +20,7 @@ function(add_resources)
 	endif()
 
 	set(RC_DEPENDS "")
-	set(header_content "#pragma once\n\n")
+	set(header_content "#pragma once\n\n#include <stddef.h>\n\n")
 
 	foreach(r ${ARGS_RESOURCES})
 		string(MAKE_C_IDENTIFIER ${r} r_identifier)
@@ -29,6 +29,8 @@ function(add_resources)
 			OUTPUT ${output}
 			COMMAND ${CMAKE_LINKER} --relocatable --format binary --output
 					${output} ${r}
+			COMMAND ${CMAKE_OBJCOPY} --add-section .note.GNU-stack=/dev/null
+					--set-section-flags .note.GNU-stack=alloc,readonly ${output}
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${r}
 		)
@@ -39,7 +41,7 @@ function(add_resources)
 		string(
 			APPEND
 			header_content
-			"\nextern char ${r_identifier}_start[] asm( \"_binary_${r_identifier}_start\" )\;\nextern char ${r_identifier}_end[]   asm( \"_binary_${r_identifier}_end\" )\;\nextern size_t ${r_identifier}_size  asm( \"_binary_${r_identifier}_size\" )\;\n"
+			"\nextern const char ${r_identifier}_start[] asm( \"_binary_${r_identifier}_start\" )\;\nextern const char ${r_identifier}_end[]   asm( \"_binary_${r_identifier}_end\" )\;\nconst static size_t ${r_identifier}_size = (size_t)(${r_identifier}_end - ${r_identifier}_start)\;\n"
 		)
 	endforeach()
 
