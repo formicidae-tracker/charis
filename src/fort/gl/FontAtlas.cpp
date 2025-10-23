@@ -313,8 +313,8 @@ CharTexture FontAtlas::load(char32_t code) {
 	    .AdvanceX = (face->glyph->metrics.horiAdvance / (64 * d_fontSize)),
 	    .AdvanceY =
 	        FT_HAS_HORIZONTAL(face)
-	            ? (face->glyph->metrics.vertAdvance / (64.0 * d_fontSize))
-	            : face->size->metrics.height / (64.0 * d_fontSize)
+	            ? (face->glyph->metrics.vertAdvance / (64.0f * d_fontSize))
+	            : face->size->metrics.height / (64.0f * d_fontSize)
 	};
 }
 
