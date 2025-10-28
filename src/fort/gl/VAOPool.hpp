@@ -17,6 +17,7 @@
 namespace fort {
 namespace gl {
 
+namespace details {
 template <typename T> struct GLTraits;
 
 template <> struct GLTraits<float> {
@@ -26,120 +27,89 @@ template <> struct GLTraits<float> {
 template <> struct GLTraits<double> {
 	constexpr static GLenum GLType = GL_DOUBLE;
 };
+}; // namespace details
 
-template <typename T, size_t... ColSizes>
-class VAOPool : public std::enable_shared_from_this<VAOPool<T, ColSizes...>> {
+class VAOPool;
+
+class VertexArrayObject {
+public:
+	const GLuint VAO, VBO;
+
+	VertexArrayObject(
+	    const slog::Logger<1> &logger =
+	        slog::With(slog::String("group", "FreeVAO"))
+	);
+	~VertexArrayObject();
+
+	VertexArrayObject(const VertexArrayObject &other)            = delete;
+	VertexArrayObject(VertexArrayObject &&other)                 = delete;
+	VertexArrayObject &operator=(const VertexArrayObject &other) = delete;
+	VertexArrayObject &operator=(VertexArrayObject &&other)      = delete;
+
+	template <typename T, size_t... ColSizes>
+	void BufferData(GLint type, const T *data, size_t len) {
+		constexpr static size_t ColSize = (... + ColSizes);
+		if ((len % ColSize) != 0) {
+			throw std::invalid_argument(
+			    "length of buffer doesn't align with total colsize (" +
+			    std::to_string(ColSize) + ")"
+			);
+		}
+		d_logger.Trace("binding VAO");
+		glBindVertexArray(VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+		FORT_CHARIS_defer {
+			d_logger.Trace("Unbinding VAO");
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+		};
+		d_logger.Trace("buffering data");
+		glBufferData(GL_ARRAY_BUFFER, sizeof(T) * len, data, type);
+		enableVertexAttrib<T, ColSize>(0, 0, ColSizes...);
+	}
+
+private:
+	template <typename T, size_t ColSize, typename... Cols>
+	void
+	enableVertexAttrib(size_t idx, size_t start, size_t size, Cols... rest) {
+		d_logger.Trace(
+		    "enabling attribs",
+		    slog::Int("idx", idx),
+		    slog::Int("start", start),
+		    slog::Int("size", size)
+		);
+		glEnableVertexAttribArray(idx);
+		glVertexAttribPointer(
+		    idx,
+		    size,
+		    details::GLTraits<T>::GLType,
+		    GL_FALSE,
+		    ColSize * sizeof(T),
+		    (const void *)(sizeof(T) * start)
+		);
+		if constexpr (sizeof...(rest) > 0) {
+			enableVertexAttrib<T, ColSize>(idx + 1, start + size, rest...);
+		}
+	}
+
+	slog::Logger<3> d_logger;
+};
+
+class VAOPool : public std::enable_shared_from_this<VAOPool> {
 
 public:
-	constexpr static size_t ColSize = (... + ColSizes);
+	VAOPool();
 
-	template <size_t N>
-	static inline slog::Logger<N + 1> buildLogger(const slog::Logger<N> &logger
-	) {
-		int i = 0;
-		return logger.With(slog::Group(
-		    "cols",
-		    slog::Int("col[" + std::to_string(i++) + "]", ColSizes)...
-		));
-	}
+	using VertexArrayObjectPtr = std::
+	    unique_ptr<VertexArrayObject, std::function<void(VertexArrayObject *)>>;
 
-	VAOPool()
-	    : d_logger{buildLogger(slog::DefaultLogger())} {}
+	VertexArrayObjectPtr Get();
 
-	struct VertexArrayObject {
-
-		GLuint          VAO, VBO;
-		slog::Logger<3> Logger;
-
-		using Ptr = std::unique_ptr<
-		    VertexArrayObject,
-		    std::function<void(VertexArrayObject *)>>;
-
-		using SharedPtr = std::shared_ptr<VertexArrayObject>;
-
-		void BindBuffer(int type, const void *data, size_t len) {
-			if (len % ColSize != 0) {
-				throw std::invalid_argument(
-				    "length of buffer doesn't align with total colsize (" +
-				    std::to_string(ColSize) + ")"
-				);
-			}
-			Logger.Trace("binding VAO");
-			glBindVertexArray(VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			defer {
-				Logger.Trace("unbinding VAO");
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glBindVertexArray(0);
-			};
-			Logger.Trace("buffering VAO");
-			glBufferData(GL_ARRAY_BUFFER, sizeof(T) * len, data, type);
-			enableVertexAttrib(0, 0, ColSizes...);
-		}
-
-	private:
-		template <typename... U>
-		void
-		enableVertexAttrib(size_t idx, size_t start, size_t size, U... rest) {
-			Logger.Trace(
-			    "enabling attribs for VAO",
-			    slog::Int("start", start),
-			    slog::Int("size", size)
-			);
-			glEnableVertexAttribArray(idx);
-			glVertexAttribPointer(
-			    idx,
-			    size,
-			    GLTraits<T>::GLType,
-			    GL_FALSE,
-			    ColSize * sizeof(T),
-			    (const void *)(sizeof(T) * start)
-			);
-
-			if constexpr (sizeof...(rest) > 0) {
-				enableVertexAttrib(idx + 1, start + size, rest...);
-			}
-		}
-	};
-
-	typename VertexArrayObject::Ptr Get() {
-		auto self = this->shared_from_this();
-		auto res  = new VertexArrayObject{VertexArrayObject{
-		     .VAO    = 0,
-		     .VBO    = 0,
-		     .Logger = d_logger.With(slog::Int("VAO", 0), slog::Int("VBO", 0))
-        }};
-
-		if (d_queue.try_dequeue(*res) == false) {
-			buildVAO(*res, d_logger);
-		}
-
-		return {res, [self](VertexArrayObject *object) {
-			        self->d_queue.enqueue(*object);
-			        delete object;
-		        }};
-	}
-
-	private:
-	    static void
-	    buildVAO(VertexArrayObject &obj, const slog::Logger<1> &logger) {
-		    glGenVertexArrays(1, &obj.VAO);
-		    glGenBuffers(1, &obj.VBO);
-		    obj.Logger = logger.With(
-		        slog::Int("VAO", obj.VAO),
-		        slog::Int("VBO", obj.VBO)
-		    );
-
-		    obj.Logger.Debug("created VAO");
-	    }
-
-	    void announce(const VertexArrayObject &obj) {
-			d_queue.enqueue(obj);
-		}
-
-		moodycamel::ConcurrentQueue<VertexArrayObject> d_queue;
-	    slog::Logger<1>                                d_logger;
-	};
+private:
+	moodycamel::ConcurrentQueue<std::unique_ptr<VertexArrayObject>> d_queue;
+	slog::Logger<1>                                                 d_logger;
+};
 
 } // namespace gl
 } // namespace fort

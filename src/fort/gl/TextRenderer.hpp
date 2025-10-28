@@ -14,9 +14,6 @@ namespace gl {
 
 class CompiledText {
 public:
-	using Pool              = VAOPool<float, 2, 2>;
-	using VertexArrayObject = Pool::VertexArrayObject;
-
 	struct RenderArgs {
 		Eigen::Vector2i ViewportSize;
 		Eigen::Vector2i Position        = {0, 0};
@@ -35,9 +32,9 @@ private:
 	friend class TextRenderer;
 
 	struct TextFragment {
-		GLuint                 Texture;
-		size_t                 Elements;
-		VertexArrayObject::Ptr VAO;
+		GLuint                        Texture;
+		size_t                        Elements;
+		VAOPool::VertexArrayObjectPtr VAO;
 	};
 
 	CompiledText(GLuint program, slog::Logger<3> &&logger);

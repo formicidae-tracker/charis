@@ -123,7 +123,7 @@ CompiledText TextRenderer::compile(
     bool                            vertical,
     slog::Logger<3>               &&logger
 ) const {
-	static auto pool = std::make_shared<CompiledText::Pool>();
+	static auto pool = std::make_shared<VAOPool>();
 	logger.Trace("compiling", slog::Int("size", characters.size()));
 	CompiledText res{d_program, std::move(logger)};
 
@@ -211,7 +211,7 @@ CompiledText TextRenderer::compile(
 		auto  VAO = pool->Get();
 		GLint prebound, postbound;
 
-		VAO->BindBuffer(GL_STATIC_DRAW, data.data(), data.size());
+		VAO->BufferData<float, 2, 2>(GL_STATIC_DRAW, data.data(), data.size());
 
 		res.d_fragments.push_back(CompiledText::TextFragment{
 		    .Texture  = textureID,

@@ -5,9 +5,11 @@
 #define fu_DEFER_NAME                    fu_DEFER_UNIQUE_NAME(zz_defer, __LINE__)
 
 #ifndef FORT_CHARIS_CAPITALIZE_DEFER
-#define defer auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#define defer             auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#define FORT_CHARIS_defer defer
 #else
-#define Defer auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#define Defer             auto fu_DEFER_NAME = fort::utils::details::Defer_void{} *[&]()
+#define FORT_CHARIS_defer Defer
 #endif
 namespace fort {
 namespace utils {
