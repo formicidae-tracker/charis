@@ -55,16 +55,16 @@ public:
 			    std::to_string(ColSize) + ")"
 			);
 		}
-		d_logger.Trace("binding VAO");
+		d_logger.DTrace("binding VAO");
 		glBindVertexArray(VAO);
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 		FORT_CHARIS_defer {
-			d_logger.Trace("Unbinding VAO");
+			d_logger.DTrace("Unbinding VAO");
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 		};
-		d_logger.Trace("buffering data");
+		d_logger.DTrace("buffering data");
 		glBufferData(GL_ARRAY_BUFFER, sizeof(T) * len, data, type);
 		enableVertexAttrib<T, ColSize>(0, 0, ColSizes...);
 	}
@@ -73,7 +73,7 @@ private:
 	template <typename T, size_t ColSize, typename... Cols>
 	void
 	enableVertexAttrib(size_t idx, size_t start, size_t size, Cols... rest) {
-		d_logger.Trace(
+		d_logger.DTrace(
 		    "enabling attribs",
 		    slog::Int("idx", idx),
 		    slog::Int("start", start),

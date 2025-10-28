@@ -272,8 +272,7 @@ CharTexture FontAtlas::load(char32_t code) {
 	screenBottomRight /= d_fontSize;
 	textureTopLeft /= d_pageSize;
 
-#ifndef NDEBUG
-	loggerForCode(code).Debug(
+	loggerForCode(code).DDebug(
 	    "new glyph in atlas",
 	    slog::Int("texture", texture),
 	    slog::Group(
@@ -298,7 +297,6 @@ CharTexture FontAtlas::load(char32_t code) {
 	    ),
 	    slog::Bool("rotated", placement.Rotated)
 	);
-#endif
 
 	return CharTexture{
 	    .Texture           = texture,

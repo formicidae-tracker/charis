@@ -20,11 +20,11 @@ VertexArrayObject::VertexArrayObject(const slog::Logger<1> &logger)
     : VAO{buildVAO()}
     , VBO{buildVBO()}
     , d_logger{logger.With(slog::Int("VAO", VAO), slog::Int("VBO", VBO))} {
-	d_logger.Info("created");
+	d_logger.DInfo("created");
 }
 
 VertexArrayObject::~VertexArrayObject() {
-	d_logger.Debug("deleting");
+	d_logger.DDebug("deleting");
 	glDeleteBuffers(1, &VBO);
 	glDeleteVertexArrays(1, &VAO);
 }
@@ -37,7 +37,7 @@ std::string to_string(VAOPool *ptr) {
 
 VAOPool::VAOPool()
     : d_logger{slog::With(slog::String("group", "VAO/" + to_string(this)))} {
-	d_logger.Debug("created");
+	d_logger.DDebug("created");
 }
 
 VAOPool::VertexArrayObjectPtr VAOPool::Get() {

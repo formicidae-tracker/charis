@@ -69,7 +69,7 @@ void CompiledText::Render(const RenderArgs &args) const {
 	glActiveTexture(GL_TEXTURE0);
 
 	for (const auto &f : d_fragments) {
-		d_logger.Trace(
+		d_logger.DTrace(
 		    "rendering fragment",
 		    slog::Int("VAO", f.VAO->VAO),
 		    slog::Int("elements", f.Elements),
@@ -124,7 +124,7 @@ CompiledText TextRenderer::compile(
     slog::Logger<3>               &&logger
 ) const {
 	static auto pool = std::make_shared<VAOPool>();
-	logger.Trace("compiling", slog::Int("size", characters.size()));
+	logger.DTrace("compiling", slog::Int("size", characters.size()));
 	CompiledText res{d_program, std::move(logger)};
 
 	using VertexData = std::vector<float>;
@@ -178,7 +178,7 @@ CompiledText TextRenderer::compile(
 		        scBR.x(), scBR.y(), txBR.x(), txBR.y(), // bottomRight
 		    }
 		);
-		d_logger.Trace(
+		d_logger.DTrace(
 		    "added character",
 		    slog::String("screenTopLeft", to_string(scTL)),
 		    slog::String("screenBottomRight", to_string(scBR)),

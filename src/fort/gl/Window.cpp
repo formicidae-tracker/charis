@@ -255,7 +255,7 @@ void Window::SetWindowCallback() {
 }
 
 void Window::OnScaleChanged(float xscale, float yscale) {
-	d_logger.Debug(
+	d_logger.DDebug(
 	    "content scale changed",
 	    slog::Float("x", xscale),
 	    slog::Float("y", yscale)
@@ -263,7 +263,7 @@ void Window::OnScaleChanged(float xscale, float yscale) {
 }
 
 void Window::OnSizeChanged(int width, int height) {
-	d_logger.Debug(
+	d_logger.DDebug(
 	    "size changed",
 	    slog::Int("width", width),
 	    slog::Int("height", height)
@@ -275,7 +275,7 @@ void Window::OnSizeChanged(int width, int height) {
 }
 
 void Window::OnKey(int key, int scancode, int action, int mods) {
-	d_logger.Debug(
+	d_logger.DDebug(
 	    "key pressed",
 	    slog::Int("key", key),
 	    slog::Int("scancode", scancode),
@@ -285,15 +285,15 @@ void Window::OnKey(int key, int scancode, int action, int mods) {
 }
 
 void Window::OnText(unsigned int codepoint) {
-	d_logger.Debug("on text", slog::Int("codepoint", codepoint));
+	d_logger.DDebug("on text", slog::Int("codepoint", codepoint));
 }
 
 void Window::OnMouseMove(double x, double y) {
-	d_logger.Debug("mouse moved", slog::Float("x", x), slog::Float("y", y));
+	d_logger.DDebug("mouse moved", slog::Float("x", x), slog::Float("y", y));
 }
 
 void Window::OnMouseInput(int button, int action, int mods) {
-	d_logger.Debug(
+	d_logger.DDebug(
 	    "mouse input",
 	    slog::Int("button", button),
 	    slog::Int("action", action),
@@ -302,7 +302,7 @@ void Window::OnMouseInput(int button, int action, int mods) {
 }
 
 void Window::OnScroll(double xOffset, double yOffset) {
-	d_logger.Debug(
+	d_logger.DDebug(
 	    "mouse scroll",
 	    slog::Float("xOffset", xOffset),
 	    slog::Float("yOffset", yOffset)
