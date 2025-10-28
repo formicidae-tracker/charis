@@ -1,9 +1,11 @@
 option(FORT_CHARIS_CAPITALIZE_DEFER Off)
 
-set(SRC_FILES Defer.cpp Once.cpp ObjectPool.cpp)
-set(HDR_FILES Defer.hpp Once.hpp ObjectPool.hpp)
+set(SRC_FILES Defer.cpp Once.cpp ObjectPool.cpp LRUCache.cpp)
+set(HDR_FILES Defer.hpp Once.hpp ObjectPool.hpp LRUCache.hpp)
 
-set(TEST_SRC_FILES DeferTest.cpp OnceTest.cpp ObjectPoolTest.cpp)
+set(TEST_SRC_FILES DeferTest.cpp OnceTest.cpp ObjectPoolTest.cpp
+				   LRUCacheTest.cpp
+)
 
 add_library(fort-utils INTERFACE)
 add_library(fort-charis::libfort-utils ALIAS fort-utils)
