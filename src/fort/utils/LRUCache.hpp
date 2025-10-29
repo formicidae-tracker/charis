@@ -1,9 +1,28 @@
 #pragma once
 
 #include <cstddef>
-#include <map>
 #include <tuple>
 #include <type_traits>
+#include <unordered_map>
+
+namespace std {
+
+template <typename... T> struct hash<std::tuple<T...>> {
+	std::size_t operator()(const std::tuple<T...> &t) const noexcept {
+		return std::apply(
+		    [](const auto &...args) {
+			    std::size_t seed = 0;
+			    ((seed ^= std::hash<std::decay_t<decltype(args)>>{}(args) +
+			              0x9e3779b9 + (seed << 6) + (seed >> 2)),
+			     ...);
+			    return seed;
+		    },
+		    t
+		);
+	}
+};
+
+} // namespace std
 
 namespace fort {
 namespace utils {
@@ -45,24 +64,22 @@ struct FunctionInfo<ReturnType (ClassType::*)(Arguments...)> {
 	    std::tuple<std::remove_cv_t<std::remove_reference_t<Arguments>>...>;
 };
 
-template <typename F>
-using return_type_t = typename FunctionInfo<F>::ResultType;
+template <typename F> using ReturnType_t = typename FunctionInfo<F>::ResultType;
 
 template <typename F>
 constexpr std::size_t num_args_v = FunctionInfo<F>::NumArguments::value;
 
 template <typename F>
-using arguments_type_t = typename FunctionInfo<F>::ArgumentTuple;
+using ArgumentTypes_t = typename FunctionInfo<F>::ArgumentTuple;
 
 template <typename F>
-using key_type_t = std::conditional_t<
+using KeyType_t = std::conditional_t<
     num_args_v<F> == 0,
     void,
     std::conditional_t<
         num_args_v<F> == 1,
-        std::remove_cv_t<std::remove_reference_t<
-            std::tuple_element_t<0, arguments_type_t<F>>>>,
-        arguments_type_t<F>>>;
+        std::tuple_element_t<0, ArgumentTypes_t<F>>,
+        ArgumentTypes_t<F>>>;
 
 } // namespace details
 
@@ -71,10 +88,10 @@ public:
 	static_assert(
 	    details::num_args_v<F> >= 1, "function needs at least one arguments"
 	);
-	using KeyType    = details::key_type_t<F>;
-	using ReturnType = details::return_type_t<F>;
+	using KeyType    = details::KeyType_t<F>;
+	using ReturnType = details::ReturnType_t<F>;
 	static_assert(
-	    std::is_same_v<details::return_type_t<F>, void> == false,
+	    std::is_same_v<details::ReturnType_t<F>, void> == false,
 	    "function should not return void"
 	);
 
@@ -156,10 +173,10 @@ private:
 	}
 	friend class LRUCacheTest_LLIntegrity_Test;
 
-	std::map<KeyType, size_t> d_indexes;
-	std::array<Node, N>       d_nodes;
-	std::size_t               d_latest = N, d_oldest = N, d_count = 0;
-	F                         d_function;
+	std::unordered_map<KeyType, size_t> d_indexes;
+	std::array<Node, N>                 d_nodes;
+	std::size_t                         d_latest = N, d_oldest = N, d_count = 0;
+	F                                   d_function;
 };
 
 } // namespace utils
