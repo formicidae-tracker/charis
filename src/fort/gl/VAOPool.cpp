@@ -20,7 +20,7 @@ VertexArrayObject::VertexArrayObject(const slog::Logger<1> &logger)
     : VAO{buildVAO()}
     , VBO{buildVBO()}
     , d_logger{logger.With(slog::Int("VAO", VAO), slog::Int("VBO", VBO))} {
-	d_logger.DInfo("created");
+	d_logger.DDebug("created");
 }
 
 VertexArrayObject::~VertexArrayObject() {

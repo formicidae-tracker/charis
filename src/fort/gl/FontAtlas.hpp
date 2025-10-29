@@ -9,13 +9,12 @@
 #include <codecvt>
 #include <locale>
 #include <memory>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 #include <slog++/slog++.hpp>
-#include "RectanglePacker.hpp"
 
+#include "RectanglePacker.hpp"
 
 namespace fort {
 namespace gl {
@@ -23,9 +22,11 @@ namespace gl {
 class FTFace;
 
 struct CharTexture {
-	GLuint          Texture;
+	GLuint Texture;
+
 	Eigen::Vector2f ScreenTopLeft, ScreenBottomRight, TextureTopLeft,
 	    TextureBottomRight;
+	bool  newline = false;
 	float AdvanceX;
 	float AdvanceY;
 };

@@ -194,33 +194,39 @@ CompiledText TextRenderer::compile(
 
 	std::map<GLuint, VertexData> dataPerTexture;
 
-	float           width  = 0.0;
-	float           height = 0.0;
-	Eigen::Vector4f BBbox  = {
-        std::numeric_limits<float>::max(),
-        std::numeric_limits<float>::max(),
-        0.0,
-        0.0
-    };
+	float x = 0.0;
+	float y = 0.0;
+
+	Eigen::Vector4f BBbox = {
+	    std::numeric_limits<float>::max(),
+	    std::numeric_limits<float>::max(),
+	    0.0,
+	    0.0
+	};
 
 	for (const auto &ch : characters) {
+		if (ch.newline == true) {
+			if (vertical == false) {
+				y -= ch.AdvanceY;
+				x = 0.0;
+			} // ignore newline on vertical layout
+			continue;
+		}
+
 		if (ch.TextureBottomRight == ch.TextureTopLeft) {
 			if (vertical == false) {
-				width += ch.AdvanceX;
+				x += ch.AdvanceX;
 			} else {
-				height -= ch.AdvanceY;
+				y -= ch.AdvanceY;
 			}
-
 			continue;
 		}
 
 		auto &data = dataPerTexture[ch.Texture];
 		data.reserve(6 * 4 * characters.size());
 
-		Eigen::Vector2f scTL =
-		    ch.ScreenTopLeft + Eigen::Vector2f{width, height};
-		Eigen::Vector2f scBR =
-		    ch.ScreenBottomRight + Eigen::Vector2f{width, height};
+		Eigen::Vector2f scTL = ch.ScreenTopLeft + Eigen::Vector2f{x, y};
+		Eigen::Vector2f scBR = ch.ScreenBottomRight + Eigen::Vector2f{x, y};
 
 		const Eigen::Vector2f &txTL = ch.TextureTopLeft;
 		const Eigen::Vector2f &txBR = ch.TextureBottomRight;
@@ -258,9 +264,9 @@ CompiledText TextRenderer::compile(
 		);
 
 		if (vertical == false) {
-			width += ch.AdvanceX;
+			x += ch.AdvanceX;
 		} else {
-			height += -ch.AdvanceY;
+			y += -ch.AdvanceY;
 		}
 	}
 	BBbox +=

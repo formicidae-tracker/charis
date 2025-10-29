@@ -126,13 +126,15 @@ class Window : public fort::gl::Window {
 	fort::gl::TextRenderer                d_renderer;
 	std::vector<StreamLine>               d_seeds;
 	std::chrono::system_clock::time_point d_last;
+	fort::gl::CompiledText                d_test;
 
 public:
 	Window(int width, int height)
-		: fort::gl::Window{width, height, "gl-matrix"}
-		, d_renderer{"UbuntuMono", font_size} {
+	    : fort::gl::Window{width, height, "gl-matrix"}
+	    , d_renderer{"UbuntuMono", font_size} {
 		updateStreamLineSeeds();
 		d_last = std::chrono::system_clock::now();
+		d_test = d_renderer.Compile("Hello\njurassic World!");
 	}
 
 	void Draw() override {
@@ -155,6 +157,13 @@ public:
 			s.Render(ViewportSize(), x);
 			x += font_size;
 		}
+
+		d_test.SetColor({1.0, 1.0, 0.0, 1.0});
+		d_test.Render({
+		    .ViewportSize = ViewportSize(),
+		    .Position     = {0, font_size},
+		    .Size         = font_size,
+		});
 	}
 
 	bool Continue() const {

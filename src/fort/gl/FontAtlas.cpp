@@ -212,9 +212,21 @@ void FontAtlas::LoadASCII() noexcept {
 }
 
 CharTexture FontAtlas::load(char32_t code) {
-
 	FT_Face face = d_face->get();
-	auto    err  = FT_Load_Char(face, code, FT_LOAD_RENDER);
+	if (code == U'\n') {
+		return CharTexture{
+		    .Texture            = 0,
+		    .ScreenTopLeft      = {0, 0},
+		    .ScreenBottomRight  = {0, 0},
+		    .TextureTopLeft     = {0, 0},
+		    .TextureBottomRight = {0, 0},
+		    .newline            = true,
+		    .AdvanceX           = 0.0f,
+		    .AdvanceY = face->size->metrics.height / (64.0f * d_fontSize),
+		};
+	}
+
+	auto err = FT_Load_Char(face, code, FT_LOAD_RENDER);
 	if (err) {
 		throw std::runtime_error(
 		    "could not load char U+" + std::to_string(code) + ": " +
@@ -342,7 +354,7 @@ FontAtlas::AtlasPage FontAtlas::buildPage() const noexcept {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	d_logger.Debug("new page", slog::Int("textureID", texture));
+	d_logger.DDebug("new page", slog::Int("textureID", texture));
 
 	return {
 	    .Texture = texture,
