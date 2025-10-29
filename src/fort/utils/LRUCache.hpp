@@ -19,7 +19,8 @@ struct FunctionInfo<ReturnType (*)(Arguments...)> {
 	using NumArguments =
 	    std::integral_constant<std::size_t, sizeof...(Arguments)>;
 
-	using ArgumentTuple = std::tuple<Arguments...>;
+	using ArgumentTuple =
+	    std::tuple<std::remove_cv_t<std::remove_reference_t<Arguments>>...>;
 };
 
 template <typename ClassType, typename ReturnType, typename... Arguments>
@@ -29,7 +30,8 @@ struct FunctionInfo<ReturnType (ClassType::*)(Arguments...) const> {
 	using NumArguments =
 	    std::integral_constant<std::size_t, sizeof...(Arguments)>;
 
-	using ArgumentTuple = std::tuple<Arguments...>;
+	using ArgumentTuple =
+	    std::tuple<std::remove_cv_t<std::remove_reference_t<Arguments>>...>;
 };
 
 template <typename ClassType, typename ReturnType, typename... Arguments>
@@ -39,7 +41,8 @@ struct FunctionInfo<ReturnType (ClassType::*)(Arguments...)> {
 	using NumArguments =
 	    std::integral_constant<std::size_t, sizeof...(Arguments)>;
 
-	using ArgumentTuple = std::tuple<Arguments...>;
+	using ArgumentTuple =
+	    std::tuple<std::remove_cv_t<std::remove_reference_t<Arguments>>...>;
 };
 
 template <typename F>

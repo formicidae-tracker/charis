@@ -1,11 +1,12 @@
 #include "LRUCache.hpp"
 #include <cstdlib>
 #include <gtest/gtest.h>
+#include <type_traits>
 
 namespace fort {
 namespace utils {
 
-int add_values(int a, int b) {
+int add_values(const int &a, const int &b) {
 	return a + b;
 }
 
@@ -13,8 +14,11 @@ static constexpr size_t N = 4;
 
 class LRUCacheTest : public ::testing::Test {
 protected:
-	using Cache = LRUCache<N, std::function<int(int, int)>>;
-
+	using Cache = LRUCache<N, int (*)(const int &, const int &)>;
+	static_assert(
+	    std::is_same_v<Cache::KeyType, std::tuple<int, int>>,
+	    "Types are not decayed"
+	);
 	Cache cache = Cache{add_values};
 
 	void SetUp() {
