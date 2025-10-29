@@ -51,7 +51,8 @@ public:
 		constexpr static size_t ColSize = (... + ColSizes);
 		if ((len % ColSize) != 0) {
 			throw std::invalid_argument(
-			    "length of buffer doesn't align with total colsize (" +
+			    "length of buffer (" + std::to_string(len) +
+			    ") doesn't align with total colsize (" +
 			    std::to_string(ColSize) + ")"
 			);
 		}
