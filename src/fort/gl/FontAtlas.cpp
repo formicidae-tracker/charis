@@ -205,6 +205,14 @@ std::string renderBitmap(FT_Bitmap &bitmap) {
 	return res;
 }
 
+template <typename T> slog::Attribute slogVector(const char *name, const T &v) {
+	return slog::Group(
+	    name,
+	    slog::Float("x", float(v.x())),
+	    slog::Float("y", float(v.y()))
+	);
+}
+
 void FontAtlas::LoadASCII() noexcept {
 	for (char32_t code = 0; code < 128; ++code) {
 		d_atlas[code] = load(code);
@@ -287,17 +295,11 @@ CharTexture FontAtlas::load(char32_t code) {
 	loggerForCode(code).DDebug(
 	    "new glyph in atlas",
 	    slog::Int("texture", texture),
-	    slog::Group(
-	        "position",
-	        slog::Int("x", placement.Position.x() + 1),
-	        slog::Int("y", placement.Position.y() + 1)
-	    ),
+	    slogVector("position", placement.Position + Eigen::Vector2i{1, 1}),
 	    slog::Group(
 	        "screen",
-	        slog::Float("screenTopLeft.x", screenTopLeft.x()),
-	        slog::Float("screenTopLeft.y", screenTopLeft.y()),
-	        slog::Float("screenBottomRight.x", screenBottomRight.x()),
-	        slog::Float("screenBottomRight.y", screenBottomRight.y())
+	        slogVector("screenTopLeft", screenTopLeft),
+	        slogVector("screenBottomRight", screenBottomRight)
 	    ),
 	    slog::Group(
 	        "bitmap",

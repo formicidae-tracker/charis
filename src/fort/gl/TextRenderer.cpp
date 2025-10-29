@@ -197,12 +197,7 @@ CompiledText TextRenderer::compile(
 	float x = 0.0;
 	float y = 0.0;
 
-	Eigen::Vector4f BBbox = {
-	    std::numeric_limits<float>::max(),
-	    std::numeric_limits<float>::max(),
-	    0.0,
-	    0.0
-	};
+	Eigen::Vector4f BBbox = {0.0, 0.0, 0.0, 0.0};
 
 	for (const auto &ch : characters) {
 		if (ch.newline == true) {
@@ -213,10 +208,19 @@ CompiledText TextRenderer::compile(
 			continue;
 		}
 
-		if (ch.TextureBottomRight == ch.TextureTopLeft) {
+		if (ch.ScreenTopLeft == ch.ScreenBottomRight) {
 			if (vertical == false) {
+				BBbox.x() = std::min(BBbox.x(), x);
+				BBbox.y() = std::min(BBbox.y(), y);
+				BBbox.z() = std::max(BBbox.z(), x + ch.AdvanceX);
+				BBbox.w() = std::max(BBbox.w(), y);
+
 				x += ch.AdvanceX;
 			} else {
+				BBbox.x() = std::min(BBbox.x(), x);
+				BBbox.y() = std::min(BBbox.y(), y - ch.AdvanceY);
+				BBbox.z() = std::max(BBbox.z(), x);
+				BBbox.w() = std::max(BBbox.w(), y);
 				y -= ch.AdvanceY;
 			}
 			continue;
