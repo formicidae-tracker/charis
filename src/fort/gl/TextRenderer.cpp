@@ -15,18 +15,23 @@ namespace fort {
 namespace gl {
 
 CompiledText::CompiledText()
-    : d_program{0}
+    : d_textProgram{0}
+    , d_backgroundProgram{0}
     , d_logger{slog::With(
           slog::String("group", "CompiledText"),
           slog::String("font", ""),
           slog::String("text", "")
       )} {}
 
-CompiledText::CompiledText(GLuint program, slog::Logger<3> &&logger)
-    : d_program(program)
+CompiledText::CompiledText(
+    GLuint textProgram, GLuint backgroundProgram, slog::Logger<3> &&logger
+)
+    : d_textProgram{textProgram}
+    , d_backgroundProgram{backgroundProgram}
     , d_logger{std::move(logger)} {}
 
-Eigen::Matrix4f buildProjectionMatrix(const CompiledText::RenderArgs &args) {
+Eigen::Matrix4f
+buildProjectionMatrix(const CompiledText::TextScreenPosition &args) {
 	Eigen::Matrix4f res;
 
 	// for each vertices, we need to:
@@ -44,22 +49,62 @@ Eigen::Matrix4f buildProjectionMatrix(const CompiledText::RenderArgs &args) {
 	return res;
 }
 
-const Eigen::Vector2f &CompiledText::RenderSize() const {
-	return d_renderSize;
+Eigen::Vector4f CompiledText::BoundingBox(const TextScreenPosition &pos) const {
+	Eigen::Vector4f res;
+
+	Eigen::Matrix4f proj;
+	proj << pos.Size, 0.0, 0.0, pos.Position.x(), // row 0
+	    0.0, -pos.Size, 0.0, pos.Position.y(),    // row 1
+	    0.0, 0.0, 1.0, 0.0,                       // row 3
+	    0.0, 0.0, 0.0, 1.0;
+
+	res.block<2, 1>(0, 0) =
+	    (proj *
+	     Eigen::Vector4f(d_boundingBox.x(), d_boundingBox.w(), 0.0f, 1.0f))
+	        .block<2, 1>(0, 0);
+
+	res.block<2, 1>(2, 0) =
+	    (proj *
+	     Eigen::Vector4f(d_boundingBox.z(), d_boundingBox.y(), 0.0f, 1.0f))
+	        .block<2, 1>(0, 0);
+
+	return res;
 }
 
-void CompiledText::Render(const RenderArgs &args) const {
+void CompiledText::SetColor(const Eigen::Vector4f &color) const {
+	glUseProgram(d_textProgram);
+	Upload(d_textProgram, "textColor", color);
+}
+
+void CompiledText::SetBackgroundColor(const Eigen::Vector4f &color) const {
+	glUseProgram(d_backgroundProgram);
+	Upload(d_backgroundProgram, "backgroundColor", color);
+}
+
+void CompiledText::renderBackground(const Eigen::Matrix4f &proj) const {
+	glUseProgram(d_backgroundProgram);
+	Upload(d_backgroundProgram, "projection", proj);
+	const auto &f = d_fragments.front();
+	glBindVertexArray(f.VAO->VAO);
+	FORT_CHARIS_defer {
+		glBindVertexArray(0);
+	};
+	glDrawArrays(GL_TRIANGLES, f.Elements, 6);
+}
+
+void CompiledText::Render(const TextScreenPosition &pos, bool renderBackground)
+    const {
 	if (d_fragments.empty()) {
 		return;
 	}
+	auto projectionMatrix = buildProjectionMatrix(pos);
+	if (renderBackground == true) {
+		this->renderBackground(projectionMatrix);
+	}
 
-	glUseProgram(d_program);
-	auto projection = glGetUniformLocation(d_program, "projection");
-	auto color      = glGetUniformLocation(d_program, "textColor");
+	glUseProgram(d_textProgram);
 
-	auto projectionMatrix = buildProjectionMatrix(args);
-	glUniformMatrix4fv(projection, 1, GL_FALSE, projectionMatrix.data());
-	glUniform4fv(color, 1, args.Color.data());
+	Upload(d_backgroundProgram, "projection", projectionMatrix);
 
 	defer {
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -83,6 +128,9 @@ void CompiledText::Render(const RenderArgs &args) const {
 	}
 }
 
+GLuint TextRenderer::s_textProgram{0};
+GLuint TextRenderer::s_backgroundProgram{0};
+
 TextRenderer::TextRenderer(
     const std::string &fontName, size_t fontSize, size_t pageSize
 )
@@ -97,16 +145,30 @@ TextRenderer::TextRenderer(
           )
       )} {
 	d_atlas.LoadASCII();
-	d_program = CompileProgram(
-	    std::string{
-	        shaders_text_vertex_start,
-	        shaders_text_vertex_end,
-	    },
-	    std::string{
-	        shaders_text_fragment_start,
-	        shaders_text_fragment_end,
-	    }
-	);
+	if (s_textProgram == 0) {
+		s_textProgram = CompileProgram(
+		    std::string{
+		        shaders_text_vertex_start,
+		        shaders_text_vertex_end,
+		    },
+		    std::string{
+		        shaders_text_fragment_start,
+		        shaders_text_fragment_end,
+		    }
+		);
+	}
+	if (s_backgroundProgram == 0) {
+		s_backgroundProgram = CompileProgram(
+		    std::string{
+		        shaders_text_vertex_start,
+		        shaders_text_vertex_end,
+		    },
+		    std::string{
+		        shaders_background_fragment_start,
+		        shaders_background_fragment_end
+		    }
+		);
+	}
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -120,32 +182,33 @@ std::string to_string(const Eigen::Vector2f &v) {
 
 CompiledText TextRenderer::compile(
     const std::vector<CharTexture> &characters,
+    int                             border_pt,
     bool                            vertical,
     slog::Logger<3>               &&logger
 ) const {
 	static auto pool = std::make_shared<VAOPool>();
 	logger.DTrace("compiling", slog::Int("size", characters.size()));
-	CompiledText res{d_program, std::move(logger)};
+	CompiledText res{s_textProgram, s_backgroundProgram, std::move(logger)};
 
 	using VertexData = std::vector<float>;
 
 	std::map<GLuint, VertexData> dataPerTexture;
 
-	res.d_width           = 0.0;
-	res.d_height          = 0.0;
-	Eigen::Vector4f BBbox = {
-	    std::numeric_limits<float>::max(),
-	    std::numeric_limits<float>::max(),
-	    0.0,
-	    0.0
-	};
+	float           width  = 0.0;
+	float           height = 0.0;
+	Eigen::Vector4f BBbox  = {
+        std::numeric_limits<float>::max(),
+        std::numeric_limits<float>::max(),
+        0.0,
+        0.0
+    };
 
 	for (const auto &ch : characters) {
 		if (ch.TextureBottomRight == ch.TextureTopLeft) {
 			if (vertical == false) {
-				res.d_width += ch.AdvanceX;
+				width += ch.AdvanceX;
 			} else {
-				res.d_height += ch.AdvanceY;
+				height -= ch.AdvanceY;
 			}
 
 			continue;
@@ -155,9 +218,9 @@ CompiledText TextRenderer::compile(
 		data.reserve(6 * 4 * characters.size());
 
 		Eigen::Vector2f scTL =
-		    ch.ScreenTopLeft + Eigen::Vector2f{res.d_width, res.d_height};
+		    ch.ScreenTopLeft + Eigen::Vector2f{width, height};
 		Eigen::Vector2f scBR =
-		    ch.ScreenBottomRight + Eigen::Vector2f{res.d_width, res.d_height};
+		    ch.ScreenBottomRight + Eigen::Vector2f{width, height};
 
 		const Eigen::Vector2f &txTL = ch.TextureTopLeft;
 		const Eigen::Vector2f &txBR = ch.TextureBottomRight;
@@ -195,16 +258,55 @@ CompiledText TextRenderer::compile(
 		);
 
 		if (vertical == false) {
-			res.d_width += ch.AdvanceX;
+			width += ch.AdvanceX;
 		} else {
-			res.d_height += ch.AdvanceY;
+			height += -ch.AdvanceY;
 		}
 	}
-	if (vertical == false) {
-		res.d_renderSize = {res.d_width, BBbox.w() - BBbox.y()};
-	} else {
-		res.d_renderSize = {BBbox.z() - BBbox.x(), res.d_height};
+	BBbox +=
+	    Eigen::Vector4f{-1, -1, 1, 1} * float(border_pt) / d_atlas.FontSize();
+
+	res.d_boundingBox = BBbox;
+
+	d_logger.DDebug(
+	    "added",
+	    slog::Group(
+	        "BBox",
+	        slog::Group(
+	            "topLeft",
+	            slog::Float("x", BBbox.x()),
+	            slog::Float("y", BBbox.y())
+	        ),
+	        slog::Group(
+	            "bottomRight",
+	            slog::Float("x", BBbox.z()),
+	            slog::Float("y", BBbox.w())
+	        )
+	    )
+	);
+
+	if (dataPerTexture.size() == 0) {
+		return res;
 	}
+
+	auto &firstData = dataPerTexture.begin()->second;
+	firstData.insert(
+	    firstData.end(),
+	    {
+	        BBbox.x(), BBbox.y(), 0.0f,
+	        0.0f, // topLeft
+	        BBbox.z(), BBbox.y(), 0.0f,
+	        0.0f, // topRight
+	        BBbox.x(), BBbox.w(), 0.0f,
+	        0.0f, // bottomLeft
+	        BBbox.z(), BBbox.y(), 0.0f,
+	        0.0f, // topRight
+	        BBbox.x(), BBbox.w(), 0.0f,
+	        0.0f, // bottomLeft
+	        BBbox.z(), BBbox.w(), 0.0f,
+	        0.0f, // bottomRight
+	    }
+	);
 
 	for (const auto &[textureID, data] : dataPerTexture) {
 
@@ -219,6 +321,7 @@ CompiledText TextRenderer::compile(
 		    .VAO      = std::move(VAO),
 		});
 	}
+	res.d_fragments.front().Elements -= 6; // removes the background.
 
 	return res;
 }

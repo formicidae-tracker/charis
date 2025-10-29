@@ -33,18 +33,21 @@ set_target_properties(
 )
 
 add_resources(
-	TARGET fort-gl #
-	RESOURCES shaders/text.fragment #
+	TARGET
+	fort-gl #
+	RESOURCES
+	shaders/text.fragment #
 	shaders/text.vertex #
+	shaders/background.fragment #
 )
 
 target_include_directories(fort-gl INTERFACE ${PROJECT_SOURCE_DIR}/src)
 
 target_link_libraries(
 	fort-gl
-	PUBLIC GLEW::glew glfw OpenGL::GL Eigen3::Eigen slog++::slog++ concurrentqueue
-	PRIVATE  Fontconfig::Fontconfig
-			Freetype::Freetype
+	PUBLIC GLEW::glew glfw OpenGL::GL Eigen3::Eigen slog++::slog++
+		   concurrentqueue
+	PRIVATE Fontconfig::Fontconfig Freetype::Freetype
 )
 
 if(NOT CHARIS_IMPORTED)

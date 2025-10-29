@@ -39,6 +39,10 @@ public:
 
 	~FontAtlas();
 
+	float FontSize() const {
+		return d_fontSize;
+	}
+
 	const CharTexture &Get(char32_t code) noexcept;
 
 	template <typename Str>

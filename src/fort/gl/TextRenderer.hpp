@@ -3,6 +3,7 @@
 #include "FontAtlas.hpp"
 #include "VAOPool.hpp"
 
+#include <Eigen/src/Core/Matrix.h>
 #include <GL/glew.h>
 // order does not matter
 #include <GL/gl.h>
@@ -14,19 +15,20 @@ namespace gl {
 
 class CompiledText {
 public:
-	struct RenderArgs {
+	struct TextScreenPosition {
 		Eigen::Vector2i ViewportSize;
-		Eigen::Vector2i Position        = {0, 0};
-		Eigen::Vector4f Color           = {1.0, 1.0, 1.0, 1.0};
-		Eigen::Vector4f BackgroundColor = {0.0, 0.0, 0.0, 1.0};
-		float           Size            = 24.0;
+		Eigen::Vector2i Position = {0, 0};
+		float           Size     = 24.0;
 	};
 
-	void Render(const RenderArgs &args) const;
-
-	const Eigen::Vector2f &RenderSize() const;
-
 	CompiledText();
+
+	void SetColor(const Eigen::Vector4f &color) const;
+	void SetBackgroundColor(const Eigen::Vector4f &color) const;
+	void
+	Render(const TextScreenPosition &args, bool renderBackground = false) const;
+
+	Eigen::Vector4f BoundingBox(const TextScreenPosition &args) const;
 
 private:
 	friend class TextRenderer;
@@ -37,12 +39,15 @@ private:
 		VAOPool::VertexArrayObjectPtr VAO;
 	};
 
-	CompiledText(GLuint program, slog::Logger<3> &&logger);
+	CompiledText(
+	    GLuint textProgram, GLuint backgroundProgram, slog::Logger<3> &&logger
+	);
+
+	void renderBackground(const Eigen::Matrix4f &proj) const;
 
 	std::vector<TextFragment> d_fragments;
-	GLuint                    d_program;
-	float                     d_width, d_height;
-	Eigen::Vector2f           d_renderSize;
+	GLuint                    d_textProgram, d_backgroundProgram;
+	Eigen::Vector4f           d_boundingBox;
 	slog::Logger<3>           d_logger;
 };
 
@@ -53,10 +58,12 @@ public:
 	);
 
 	template <typename Str>
-	CompiledText Compile(Str &&str, bool vertical = false) noexcept {
+	CompiledText
+	Compile(Str &&str, int border_pt = 1, bool vertical = false) noexcept {
 		auto characters = d_atlas.Get(std::forward<Str>(str));
 		return compile(
 		    characters,
+		    border_pt,
 		    vertical,
 		    d_logger.With(slog::String("text", std::forward<Str>(str)))
 		);
@@ -65,12 +72,13 @@ public:
 private:
 	CompiledText compile(
 	    const std::vector<CharTexture> &characters,
+	    int                             border_pt,
 	    bool                            vertical,
 	    slog::Logger<3>               &&logger
 	) const;
 
 	FontAtlas       d_atlas;
-	GLuint          d_program;
+	static GLuint   s_textProgram, s_backgroundProgram;
 	slog::Logger<2> d_logger;
 };
 

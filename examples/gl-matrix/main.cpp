@@ -46,16 +46,45 @@ struct StreamLine {
 	float                  y;
 	fort::gl::CompiledText _text;
 
-	bool Done(size_t height) const {
-		return data.empty() ||
-		       (y - _text.RenderSize().y() * 2 * font_size) > height;
+	bool Done(const Eigen::Vector2i &vpSize) const {
+		if (data.empty()) {
+			return true;
+		}
+		auto bbox = _text.BoundingBox(
+		    {.ViewportSize = vpSize, .Position = {0, y}, .Size = font_size}
+		);
+		slog::DDebug(
+		    "streamline done test",
+		    slog::Float("yPos", y),
+		    slog::Group(
+		        "BBox",
+		        slog::Group(
+		            "topLeft",
+		            slog::Float("x", bbox.x()),
+		            slog::Float("y", bbox.y())
+		        ),
+		        slog::Group(
+		            "bottomRight",
+		            slog::Float("x", bbox.z()),
+		            slog::Float("y", bbox.w())
+		        )
+		    ),
+		    slog::Group(
+		        "VP",
+		        slog::Int("width", vpSize.x()),
+		        slog::Int("height", vpSize.y())
+		    )
+		);
+
+		return bbox.y() > vpSize.y();
 	}
 
-	void Resample(fort::gl::TextRenderer &renderer) {
+	void
+	Resample(fort::gl::TextRenderer &renderer, const Eigen::Vector2i &vpSize) {
 		using Converter =
 		    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>;
 		static Converter converter;
-		size_t           total = std::rand() % 25 + 5;
+		size_t           total = std::rand() % 50 + 5;
 		data                   = "";
 		while (utf8_length(data) < total) {
 			char32_t ch = std::rand() % 127;
@@ -65,18 +94,30 @@ struct StreamLine {
 			data += converter.to_bytes(std::basic_string<char32_t>(1, ch));
 		}
 
-		_text = renderer.Compile(data, true);
+		_text = renderer.Compile(data, 1, true);
 		y     = std::rand() % 20 - 20;
+		y -= _text
+		         .BoundingBox(
+		             {.ViewportSize = vpSize,
+		              .Position     = {0, 0},
+		              .Size         = font_size}
+		         )
+		         .w();
 		//-_text.RenderSize().y();
 		speed = 40.0 + (std::rand() % 200) / 10.0f;
 	}
 
 	void Render(const Eigen::Vector2i &vpSize, size_t x) const {
-		_text.Render({
-		    .ViewportSize = vpSize,
-		    .Position     = {x, y},
-		    .Color{0.0f, 1.0f, 0.0f, 1.0f},
-		});
+		_text.SetColor({0.0f, 1.0f, 0.0f, 1.0f});
+		_text.SetBackgroundColor({1.0f, 0.0f, 0.0f, 1.0f});
+		_text.Render(
+		    {
+		        .ViewportSize = vpSize,
+		        .Position     = {x, y},
+		        .Size         = font_size,
+		    },
+		    false
+		);
 	}
 };
 
@@ -88,8 +129,8 @@ class Window : public fort::gl::Window {
 
 public:
 	Window(int width, int height)
-	    : fort::gl::Window{width, height, "gl-matrix"}
-	    , d_renderer{"UbuntuMono", 24} {
+		: fort::gl::Window{width, height, "gl-matrix"}
+		, d_renderer{"UbuntuMono", font_size} {
 		updateStreamLineSeeds();
 		d_last = std::chrono::system_clock::now();
 	}
@@ -97,7 +138,7 @@ public:
 	void Draw() override {
 		glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		float x   = 0.0f;
+		float x   = 4.0f;
 		auto  now = std::chrono::system_clock::now();
 		auto  ellapsed =
 		    std::chrono::duration_cast<std::chrono::milliseconds>(now - d_last)
@@ -108,8 +149,8 @@ public:
 		for (auto &s : d_seeds) {
 			s.y += s.speed * ellapsed;
 
-			if (s.Done(ViewportSize().y())) {
-				s.Resample(d_renderer);
+			if (s.Done(ViewportSize())) {
+				s.Resample(d_renderer, ViewportSize());
 			}
 			s.Render(ViewportSize(), x);
 			x += font_size;
@@ -146,8 +187,8 @@ public:
 		size_t seeds = ViewportSize().x() / font_size + 1;
 		d_seeds.resize(seeds);
 		for (auto &s : d_seeds) {
-			if (s.Done(ViewportSize().y())) {
-				s.Resample(d_renderer);
+			if (s.Done(ViewportSize())) {
+				s.Resample(d_renderer, ViewportSize());
 			}
 		}
 		slog::Info("seeds updated", slog::Int("size", d_seeds.size()));
