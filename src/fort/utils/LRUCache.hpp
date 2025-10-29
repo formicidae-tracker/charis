@@ -151,6 +151,7 @@ private:
 		d_indexes[key] = d_oldest;
 		moveFront(d_oldest);
 	}
+	friend class LRUCacheTest_LLIntegrity_Test;
 
 	std::map<KeyType, size_t> d_indexes;
 	std::array<Node, N>       d_nodes;

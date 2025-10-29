@@ -1,4 +1,5 @@
 #include "LRUCache.hpp"
+#include <cstdlib>
 #include <gtest/gtest.h>
 
 namespace fort {
@@ -41,6 +42,34 @@ TEST_F(LRUCacheTest, RemovesOldest) {
 	}
 	EXPECT_FALSE(cache.Contains({1, 99 - N}));
 	EXPECT_FALSE(cache.Contains({1, 100}));
+}
+
+TEST_F(LRUCacheTest, LLIntegrity) {
+	for (size_t i = 0; i < 100 * N; ++i) {
+		int v = std::rand() % (4 * N);
+		EXPECT_EQ(cache(1, v), 1 + v);
+		EXPECT_TRUE(cache.Contains({1, v}));
+	}
+	// Puts the cache in a know state;
+	for (int i = 1; i <= N; ++i) {
+		EXPECT_EQ(cache(1, i), 1 + i);
+		EXPECT_TRUE(cache.Contains({1, i}));
+	}
+
+	size_t current      = cache.d_oldest;
+	size_t expectedNext = N;
+	for (int i = 1; i <= N; ++i) {
+		if (current >= N) {
+			ADD_FAILURE() << "Failed for i=" << i << " current is out of bound";
+			break;
+		}
+		const auto &n = cache.d_nodes[current];
+		EXPECT_EQ(n.key, std::make_tuple(1, i));
+		EXPECT_EQ(n.next, expectedNext);
+		expectedNext = current;
+		current      = n.previous;
+	}
+	EXPECT_EQ(current, N);
 }
 
 } // namespace utils
