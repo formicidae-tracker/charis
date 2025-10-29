@@ -11,34 +11,41 @@
 #include <memory>
 #include <slog++/Attribute.hpp>
 #include <slog++/slog++.hpp>
+#include <string>
 static constexpr size_t font_size = 12;
 
-size_t utf8_length(const std::string &w) {
-	int len = 0;
-	for (char c : w) {
-		if ((c & 0xc0) != 0x80) {
-			++len;
-		}
-	}
-	return len;
-}
+// clang-format off
+static const char32_t display_chars[] = {
+    // Basic ASCII
+    U'0',U'1',U'2',U'3',U'4',U'5',U'6',U'7',U'8',U'9',
+    U'A',U'B',U'C',U'D',U'E',U'F',U'G',U'H',U'I',U'J',
+    U'K',U'L',U'M',U'N',U'O',U'P',U'Q',U'R',U'S',U'T',
+    U'U',U'V',U'W',U'X',U'Y',U'Z',
+    U'a',U'b',U'c',U'd',U'e',U'f',U'g',U'h',U'i',U'j',
+    U'k',U'l',U'm',U'n',U'o',U'p',U'q',U'r',U's',U't',
+    U'u',U'v',U'w',U'x',U'y',U'z',
+    // ASCII punctuation
+    U'!',U'@',U'#',U'$',U'%',U'&',U'*',U'+',U'-',U'=',U'/',U'\\',U'|',U'_',U':',U';',
+    U'<',U'>',U'?',U'[',U']',U'{',U'}',U'(',U')',U'.',U',',U'~',U'^',
 
-bool chr_isvalid(char32_t c) {
-	if (c <= 0x7F)
-		return true;
-	if (0xC080 == c)
-		return true; // Accept 0xC080 as representation for '\0'
-	if (0xC280 <= c && c <= 0xCFBF)
-		return ((c & 0xE0C0) == 0xC080);
-	return false;
-	if (0xEDA080 <= c && c <= 0xEDBFBF)
-		return false; // Reject UTF-16 surrogates
-	if (0xE0A080 <= c && c <= 0xEFBFBF)
-		return ((c & 0xF0C0C0) == 0xE08080);
-	if (0xF0908080 <= c && c <= 0xF48FBFBF)
-		return ((c & 0xF8C0C0C0) == 0xF0808080);
-	return false;
-}
+    // Box-drawing and geometric (U+2500–U+257F, U+2580–U+259F)
+    U'\u2500',U'\u2502',U'\u250C',U'\u2510',U'\u2514',U'\u2518',U'\u252C',U'\u2534',U'\u253C',
+    U'\u2550',U'\u2551',U'\u2554',U'\u2557',U'\u255A',U'\u255D',U'\u256C',U'\u2570',U'\u2571',
+    U'\u2580',U'\u2584',U'\u2588',U'\u2591',U'\u2592',U'\u2593',
+
+    // Greek letters (U+0391–U+03C9)
+    U'\u0391',U'\u0392',U'\u0393',U'\u0394',U'\u0395',U'\u0396',U'\u0397',U'\u0398',U'\u0399',U'\u039A',
+    U'\u039B',U'\u039C',U'\u039D',U'\u039E',U'\u039F',U'\u03A0',U'\u03A1',U'\u03A3',U'\u03A4',U'\u03A5',
+    U'\u03A6',U'\u03A7',U'\u03A8',U'\u03A9',
+    U'\u03B1',U'\u03B2',U'\u03B3',U'\u03B4',U'\u03B5',U'\u03B6',U'\u03B7',U'\u03B8',U'\u03B9',U'\u03BA',
+    U'\u03BB',U'\u03BC',U'\u03BD',U'\u03BE',U'\u03BF',U'\u03C0',U'\u03C1',U'\u03C3',U'\u03C4',U'\u03C5',
+    U'\u03C6',U'\u03C7',U'\u03C8',U'\u03C9',
+
+
+};
+// clang-format on
+static constexpr size_t DISPLAY_CHAR_NUM =
+    sizeof(display_chars) / sizeof(char32_t);
 
 struct StreamLine {
 	float                  speed;
@@ -81,18 +88,16 @@ struct StreamLine {
 
 	void
 	Resample(fort::gl::TextRenderer &renderer, const Eigen::Vector2i &vpSize) {
+
 		using Converter =
 		    std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t>;
-		static Converter converter;
-		size_t           total = std::rand() % 50 + 5;
-		data                   = "";
-		while (utf8_length(data) < total) {
-			char32_t ch = std::rand() % 127;
-			if (chr_isvalid(ch) == false) {
-				continue;
-			}
-			data += converter.to_bytes(std::basic_string<char32_t>(1, ch));
+		static Converter            converter;
+		size_t                      total = std::rand() % 50 + 5;
+		std::basic_string<char32_t> newStr;
+		for (size_t i = 0; i < total; ++i) {
+			newStr += display_chars[std::rand() % DISPLAY_CHAR_NUM];
 		}
+		data = converter.to_bytes(newStr);
 
 		_text = renderer.Compile(data, 1, true);
 		y     = std::rand() % 20 - 20;
@@ -131,7 +136,7 @@ class Window : public fort::gl::Window {
 public:
 	Window(int width, int height)
 	    : fort::gl::Window{width, height, "gl-matrix"}
-	    , d_renderer{"UbuntuMono", font_size} {
+	    , d_renderer{"UbuntuMonoNerdFontMono", font_size} {
 		updateStreamLineSeeds();
 		d_last = std::chrono::system_clock::now();
 		d_test = d_renderer.Compile("Hello\njurassic World!");

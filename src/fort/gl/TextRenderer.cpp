@@ -104,7 +104,7 @@ void CompiledText::Render(const TextScreenPosition &pos, bool renderBackground)
 
 	glUseProgram(d_textProgram);
 
-	Upload(d_backgroundProgram, "projection", projectionMatrix);
+	Upload(d_textProgram, "projection", projectionMatrix);
 
 	defer {
 		glBindTexture(GL_TEXTURE_2D, 0);

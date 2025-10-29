@@ -153,6 +153,13 @@ FontAtlas::FontAtlas(
       )} {
 	static FTLibrary  ft;
 	static FontConfig fc;
+
+	auto name = fc.Locate(fontName);
+	slog::Info(
+	    "font located",
+	    slog::String("desired", fontName),
+	    slog::String("found", name)
+	);
 	d_face = ft.Open(fc.Locate(fontName));
 
 	d_face->SetPixelHeight(fontSize);
@@ -215,7 +222,12 @@ template <typename T> slog::Attribute slogVector(const char *name, const T &v) {
 
 void FontAtlas::LoadASCII() noexcept {
 	for (char32_t code = 0; code < 128; ++code) {
-		d_atlas[code] = load(code);
+		try {
+			auto cht      = load(code);
+			d_atlas[code] = cht;
+		} catch (const std::exception &e) {
+			d_logger.DError("ASCII char not found", slog::Int("code", code));
+		}
 	}
 }
 
@@ -233,7 +245,11 @@ CharTexture FontAtlas::load(char32_t code) {
 		    .AdvanceY = face->size->metrics.height / (64.0f * d_fontSize),
 		};
 	}
-
+	if (FT_Get_Char_Index(face, code) == 0) {
+		throw std::runtime_error(
+		    "could not load char U+" + std::to_string(code) + ": no index found"
+		);
+	}
 	auto err = FT_Load_Char(face, code, FT_LOAD_RENDER);
 	if (err) {
 		throw std::runtime_error(

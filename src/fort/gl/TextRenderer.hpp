@@ -17,7 +17,7 @@ class CompiledText {
 public:
 	struct TextScreenPosition {
 		Eigen::Vector2i ViewportSize;
-		Eigen::Vector2i Position = {0, 0};
+		Eigen::Vector2f Position = {0, 0};
 		float           Size     = 24.0;
 	};
 
