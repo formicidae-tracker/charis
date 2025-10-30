@@ -17,12 +17,16 @@ namespace gl {
 		int   infoLength;                                                      \
 		glGet##type##iv(psID, sType, &result);                                 \
 		glGet##type##iv(psID, GL_INFO_LOG_LENGTH, &infoLength);                \
-		if (infoLength > 0) {                                                  \
-			std::vector<char> message(infoLength + 1);                         \
-			glGet##type##InfoLog(psID, infoLength, NULL, &message[0]);         \
+		if (result == GL_FALSE) {                                              \
+			std::string message = "No Info";                                   \
+			if (infoLength > 0) {                                              \
+				std::vector<char> message_array(infoLength + 1);               \
+				glGet##type##InfoLog(psID, infoLength, NULL, &message[0]);     \
+				message =                                                      \
+				    std::string(message_array.begin(), message_array.end());   \
+			}                                                                  \
 			throw std::runtime_error(                                          \
-			    "Could not compile " #type ": " +                              \
-			    std::string(message.begin(), message.end())                    \
+			    "Could not compile " #type ": " + message                      \
 			);                                                                 \
 		}                                                                      \
 	} while (0)
@@ -34,8 +38,6 @@ namespace gl {
 
 GLuint CompileShader(const std::string &shaderCode, GLenum type) {
 	GLuint shaderID = glCreateShader(type);
-	GLint  result   = GL_FALSE;
-	int    infoLength;
 
 	const char *code = shaderCode.c_str();
 	glShaderSource(shaderID, 1, &code, NULL);

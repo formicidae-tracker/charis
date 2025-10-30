@@ -161,7 +161,7 @@ public:
 		d_name = tokens[0].Value;
 		argc   = 1;
 
-		for (int i = 1; i < tokens.size(); ++i) {
+		for (size_t i = 1; i < tokens.size(); ++i) {
 			if (tokens[i].Type == details::TokenType::VALUE) {
 				// unconsummed value, simply add it to the argument.
 				argv[argc] = argv[tokens[i].Index];
@@ -177,12 +177,14 @@ public:
 			OptionPtr opt = findOption(tokens[i].Value);
 			if (opt == nullptr) {
 				throw std::runtime_error{
-				    "unknown flag '" + tokens[i].Value + "'"};
+				    "unknown flag '" + tokens[i].Value + "'"
+				};
 			}
 			if (opt->NumArgs == 0 &&
 			    tokens[i].Type != details::TokenType::IDENTIFIER_WITH_VALUE) {
 				opt->Parse(std::nullopt);
-			} else if (i + 1 == tokens.size() || tokens[i + 1].Type != details::TokenType::VALUE) {
+			} else if (i + 1 == tokens.size() ||
+			           tokens[i + 1].Type != details::TokenType::VALUE) {
 				throw std::runtime_error{"missing required value after flag"};
 			} else {
 				opt->Parse(tokens[i + 1].Value);

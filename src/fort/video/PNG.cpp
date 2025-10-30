@@ -78,7 +78,6 @@ ReadPNG(const std::filesystem::path &path, PixelFormat format) {
 	    SPNG_DECODE_PROGRESSIVE
 	);
 
-	int                  error;
 	struct spng_row_info rowInfo;
 
 	try {

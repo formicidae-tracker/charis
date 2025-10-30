@@ -265,7 +265,7 @@ CharTexture FontAtlas::load(char32_t code) {
 
 	if ((size.array() > d_pageSize - 2).any()) {
 		std::ostringstream oss;
-		oss << "could not put glyph for code U+" << std::hex << code
+		oss << "could not put glyph for code U+" << std::hex << (int32_t)code
 		    << " in atlas: glyph size (" << size.transpose()
 		    << ") does not fit in an atlas page ( " << d_pageSize << "x"
 		    << d_pageSize << ")";

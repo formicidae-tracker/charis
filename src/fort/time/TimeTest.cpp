@@ -388,7 +388,7 @@ TEST_F(TimeUTest, Overflow) {
 		    google::protobuf::Timestamp a;
 		    a.set_seconds(std::numeric_limits<int64_t>::max());
 		    a.set_nanos((1 * Duration::Second + 1).Nanoseconds());
-		    auto t = Time::FromTimestamp(a);
+		    Time::FromTimestamp(a);
 	    },
 	    Time::Overflow
 	);
@@ -398,7 +398,7 @@ TEST_F(TimeUTest, Overflow) {
 		    google::protobuf::Timestamp a;
 		    a.set_seconds(std::numeric_limits<int64_t>::min());
 		    a.set_nanos(-1);
-		    auto t = Time::FromTimestamp(a);
+		    Time::FromTimestamp(a);
 	    },
 	    Time::Overflow
 	);

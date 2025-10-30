@@ -278,7 +278,7 @@ CompiledText TextRenderer::compile(
 
 	res.d_boundingBox = BBbox;
 
-	d_logger.DDebug(
+	d_logger.DTrace(
 	    "added",
 	    slog::Group(
 	        "BBox",
@@ -320,8 +320,7 @@ CompiledText TextRenderer::compile(
 
 	for (const auto &[textureID, data] : dataPerTexture) {
 
-		auto  VAO = pool->Get();
-		GLint prebound, postbound;
+		auto VAO = pool->Get();
 
 		VAO->BufferData<float, 2, 2>(GL_STATIC_DRAW, data.data(), data.size());
 

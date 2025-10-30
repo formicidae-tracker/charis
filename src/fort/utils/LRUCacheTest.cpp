@@ -55,14 +55,14 @@ TEST_F(LRUCacheTest, LLIntegrity) {
 		EXPECT_TRUE(cache.Contains({1, v}));
 	}
 	// Puts the cache in a know state;
-	for (int i = 1; i <= N; ++i) {
+	for (int i = 1; i <= int(N); ++i) {
 		EXPECT_EQ(cache(1, i), 1 + i);
 		EXPECT_TRUE(cache.Contains({1, i}));
 	}
 
 	size_t current      = cache.d_oldest;
 	size_t expectedNext = N;
-	for (int i = 1; i <= N; ++i) {
+	for (int i = 1; i <= int(N); ++i) {
 		if (current >= N) {
 			ADD_FAILURE() << "Failed for i=" << i << " current is out of bound";
 			break;

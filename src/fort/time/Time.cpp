@@ -148,7 +148,7 @@ Duration Duration::Parse(const std::string &i) {
 	if (fi == units.end()) {
 		throws("unknown unit '" + unit + "'");
 	}
-	if (integer > std::numeric_limits<int64_t>::max() / fi->second) {
+	if (integer > uint64_t(std::numeric_limits<int64_t>::max() / fi->second)) {
 		throws("integer will overflow");
 	}
 	int64_t res     = integer * fi->second;
@@ -327,7 +327,7 @@ Time Time::Add(const Duration &d) const {
 
 		if ((toAdd > 0 && d_mono > std::numeric_limits<uint64_t>::max() - toAdd
 		    ) ||
-		    (toAdd < 0 && -toAdd > d_mono)) {
+		    (toAdd < 0 && uint64_t(-toAdd) > d_mono)) {
 			throw Overflow("Mono");
 		}
 
@@ -361,7 +361,7 @@ Time Time::Round(const Duration &d) const {
 
 	auto r = Reminder(d);
 	if (uint64_t(r.d_nanoseconds) + uint64_t(r.d_nanoseconds) <
-	    int64_t(d.d_nanoseconds)) {
+	    uint64_t(d.d_nanoseconds)) {
 		return res.Add(-r);
 	}
 	return res.Add(d - r);
@@ -584,10 +584,10 @@ Time::ToTimePoint() const {
 
 	int64_t nanos = d_wallSec * NANOS_PER_SECOND;
 
-	if (d_wallNsec > 0 &&
-	        nanos > (std::numeric_limits<int64_t>::max() - d_wallNsec) ||
-	    d_wallNsec < 0 &&
-	        nanos < std::numeric_limits<int64_t>::min() - d_wallNsec) {
+	if ((d_wallNsec > 0 &&
+	     nanos > (std::numeric_limits<int64_t>::max() - d_wallNsec)) ||
+	    (d_wallNsec < 0 &&
+	     nanos < std::numeric_limits<int64_t>::min() - d_wallNsec)) {
 		throw Overflow("Wall");
 	}
 
