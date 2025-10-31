@@ -1,5 +1,6 @@
 #pragma once
 
+#include "fort/utils/ObjectPool.hpp"
 #include <GL/glew.h>
 // order matter
 #include <GL/gl.h>
@@ -97,19 +98,17 @@ private:
 	slog::Logger<3> d_logger;
 };
 
-class VAOPool : public std::enable_shared_from_this<VAOPool> {
-
+class VAOPool
+    : public utils::
+          ObjectPool<VertexArrayObject, std::function<VertexArrayObject *()>> {
 public:
+	static std::shared_ptr<VAOPool> Create();
+
+protected:
 	VAOPool();
 
-	using VertexArrayObjectPtr = std::
-	    unique_ptr<VertexArrayObject, std::function<void(VertexArrayObject *)>>;
-
-	VertexArrayObjectPtr Get();
-
 private:
-	moodycamel::ConcurrentQueue<std::unique_ptr<VertexArrayObject>> d_queue;
-	slog::Logger<1>                                                 d_logger;
+	slog::Logger<1> d_logger;
 };
 
 } // namespace gl

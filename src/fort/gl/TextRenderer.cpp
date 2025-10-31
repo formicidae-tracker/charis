@@ -186,7 +186,7 @@ CompiledText TextRenderer::compile(
     bool                            vertical,
     slog::Logger<3>               &&logger
 ) const {
-	static auto pool = std::make_shared<VAOPool>();
+	static auto pool = VAOPool::Create();
 	logger.DTrace("compiling", slog::Int("size", characters.size()));
 	CompiledText res{s_textProgram, s_backgroundProgram, std::move(logger)};
 

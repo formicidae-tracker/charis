@@ -24,10 +24,8 @@ namespace video {
 struct Encoder::Implementation {
 
 	PixelFormat d_expectedFormat;
-	using PacketPool = utils::ObjectPool<
-	    AVPacket,
-	    std::function<AVPacket *()>,
-	    std::function<void(AVPacket *)>>;
+	using PacketPool =
+	    utils::ObjectPool<AVPacket, AVPacket *(*)(), void (*)(AVPacket *)>;
 
 	details::AVFramePtr d_frame = details::AVFramePtr{av_frame_alloc()};
 	PacketPool::Ptr     d_pool =
@@ -92,7 +90,7 @@ struct Encoder::Implementation {
 	}
 
 	PacketPool::ObjectPtr Receive() {
-		auto pkt   = d_pool->Get(av_packet_unref);
+		auto pkt   = d_pool->GetWithRelease(av_packet_unref);
 		int  error = avcodec_receive_packet(d_codec.get(), pkt.get());
 		if (error == AVERROR(EAGAIN) || error == AVERROR_EOF) {
 			return nullptr;

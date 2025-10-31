@@ -34,9 +34,9 @@ private:
 	friend class TextRenderer;
 
 	struct TextFragment {
-		GLuint                        Texture;
-		size_t                        Elements;
-		VAOPool::VertexArrayObjectPtr VAO;
+		GLuint             Texture;
+		size_t             Elements;
+		VAOPool::ObjectPtr VAO;
 	};
 
 	CompiledText(

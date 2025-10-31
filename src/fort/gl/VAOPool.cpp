@@ -1,4 +1,5 @@
 #include "VAOPool.hpp"
+#include "fort/utils/ObjectPool.hpp"
 #include <memory>
 #include <sstream>
 
@@ -36,22 +37,17 @@ std::string to_string(VAOPool *ptr) {
 }
 
 VAOPool::VAOPool()
-    : d_logger{slog::With(slog::String("group", "VAO/" + to_string(this)))} {
+    : utils::
+          ObjectPool<VertexArrayObject, std::function<VertexArrayObject *()>>(
+              [this]() { return new VertexArrayObject{d_logger}; },
+              utils::DefaultDeleter<VertexArrayObject>{}
+          )
+    , d_logger{slog::With(slog::String("group", "VAO/" + to_string(this)))} {
 	d_logger.DDebug("created");
 }
 
-VAOPool::VertexArrayObjectPtr VAOPool::Get() {
-	std::unique_ptr<VertexArrayObject> res;
-	if (d_queue.try_dequeue(res) == false) {
-		res = std::make_unique<VertexArrayObject>(d_logger);
-	}
-
-	return {
-	    res.release(),
-	    [self = this->shared_from_this()](VertexArrayObject *vao) {
-		    self->d_queue.enqueue(std::unique_ptr<VertexArrayObject>(vao));
-	    }
-	};
+std::shared_ptr<VAOPool> VAOPool::Create() {
+	return std::shared_ptr<VAOPool>{new VAOPool()};
 }
 
 } // namespace gl

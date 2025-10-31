@@ -41,74 +41,74 @@ public:
 	using Ptr       = std::shared_ptr<ObjectPool<T, Constructor, Deleter>>;
 	using ObjectPtr = std::unique_ptr<T, std::function<void(T *)>>;
 
-	inline ~ObjectPool() {
-		// it can only be called if all our pointer went back, so a single
-		// thread will access this;
-		T *toDelete;
-		while (d_queue.try_dequeue(toDelete)) {
-			d_deleter(toDelete);
+	virtual ~ObjectPool() {
+		T *obj;
+		while (d_queue.try_dequeue(obj) == true) {
+			d_deleter(obj);
 		}
 	}
 
-	inline static Ptr
-	Create(const Constructor &constructor, const Deleter &deleter) {
-		auto res = new ObjectPool(constructor, deleter);
-		return Ptr(res);
+	ObjectPool(const ObjectPool &other) = delete;
+	ObjectPool(ObjectPool &&other)      = delete;
+	ObjectPool &operator=(const ObjectPool &other) = delete;
+	ObjectPool &operator=(ObjectPool &&other)      = delete;
+
+	inline static Ptr Create(
+	    const Constructor &constructor = Constructor{},
+	    const Deleter     &deleter     = Deleter{}
+	) {
+		return Ptr{new ObjectPool(constructor, deleter)};
 	}
 
-	template <
-	    typename U                                               = T,
-	    typename V                                               = Deleter,
-	    std::enable_if_t<std::is_same_v<V, DefaultDeleter<T>>> * = nullptr>
-	inline static Ptr Create(const Constructor &constructor) {
-		return Ptr{new ObjectPool(constructor, Deleter{})};
-	}
+	template <typename... Args> inline ObjectPtr Get(Args &&...args) {
+		T *res;
 
-	template <
-	    typename U = T,
-	    std::enable_if_t<
-	        std::is_default_constructible_v<U> &&
-	        std::is_same_v<Deleter, DefaultDeleter<T>>> * = nullptr>
-	inline static Ptr Create() {
-		return Ptr{new ObjectPool(Constructor{}, Deleter{})};
-	}
+		if (d_queue.try_dequeue(res) == false) {
+			res = d_constructor(std::forward<Args>(args)...);
+		}
 
-	template <typename... Function>
-	inline ObjectPtr Get(Function &&...onDelete) {
-		T *res = nullptr;
-
-		auto self = this->shared_from_this();
-
-		auto enqueue = [self, onDelete...](T *t) {
-			(onDelete(t), ...);
-			self->d_queue.enqueue(t);
+		return {
+		    res,
+		    [self = this->shared_from_this()](T *t) {
+			    self->d_queue.enqueue(t);
+		    },
 		};
-
-		if (d_queue.try_dequeue(res) == true) {
-			return {res, enqueue};
-		}
-		res = d_constructor();
-		return {res, enqueue};
 	}
 
-inline ObjectPtr
-Get(std::function<void(T *)> onDelete) {
+	template <typename... OnRelease>
+	inline ObjectPtr GetWithRelease(OnRelease &&...onRelease) {
+		T *res;
+		if (d_queue.try_dequeue(res) == false) {
+			res = d_constructor();
+		}
+		return {
+		    res,
+		    [self = this->shared_from_this(), onRelease...](T *t) {
+			    (onRelease(t), ...);
+			    self->d_queue.enqueue(t);
+		    },
+		};
+	}
 
-	T   *res  = nullptr;
-	auto self = this->shared_from_this();
-}
+	template <typename... Args> void Reserve(size_t n, Args &&...args) {
+		std::vector<ObjectPtr> reserved{n, nullptr};
+		for (auto &obj : reserved) {
+			obj = Get(std::forward<Args>(args)...);
+		}
+	}
 
-private:
-	using Queue = moodycamel::ConcurrentQueue<T *>;
+	protected:
+		ObjectPool(const Constructor &constructor, const Deleter &deleter)
+		    : d_constructor{constructor}
+		    , d_deleter(deleter) {}
 
-	inline ObjectPool(const Constructor &constructor, const Deleter &deleter)
-	    : d_constructor{constructor}
-	    , d_deleter(deleter) {}
+	private:
+		using Queue = moodycamel::ConcurrentQueue<T *>;
 
-	Constructor d_constructor;
-	Deleter     d_deleter;
-	Queue       d_queue;
-};
+		Constructor d_constructor;
+		Deleter     d_deleter;
+		Queue       d_queue;
+	};
 
 } // namespace utils
 }; // namespace fort
