@@ -40,7 +40,7 @@ VAOPool::VAOPool()
     : utils::
           ObjectPool<VertexArrayObject, std::function<VertexArrayObject *()>>(
               [this]() { return new VertexArrayObject{d_logger}; },
-              utils::DefaultDeleter<VertexArrayObject>{}
+              std::default_delete<VertexArrayObject>{}
           )
     , d_logger{slog::With(slog::String("group", "VAO/" + to_string(this)))} {
 	d_logger.DDebug("created");

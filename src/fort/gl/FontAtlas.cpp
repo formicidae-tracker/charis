@@ -1,11 +1,12 @@
 #include "FontAtlas.hpp"
 
+#include <cctype>
 #include <cstring>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <type_traits>
-#include <iostream>
 
 #include <fontconfig/fontconfig.h>
 #include <freetype/freetype.h>
@@ -14,7 +15,6 @@
 #include <slog++/slog++.hpp>
 
 #include <fort/utils/Defer.hpp>
-
 
 namespace fort {
 namespace gl {
@@ -221,7 +221,11 @@ template <typename T> slog::Attribute slogVector(const char *name, const T &v) {
 }
 
 void FontAtlas::LoadASCII() noexcept {
+
 	for (char32_t code = 0; code < 128; ++code) {
+		if (std::isprint(code) == false || code != '\n') {
+			continue;
+		}
 		try {
 			auto cht      = load(code);
 			d_atlas[code] = cht;
@@ -308,7 +312,7 @@ CharTexture FontAtlas::load(char32_t code) {
 	screenBottomRight /= d_fontSize;
 	textureTopLeft /= d_pageSize;
 
-	loggerForCode(code).DDebug(
+	loggerForCode(code).DTrace(
 	    "new glyph in atlas",
 	    slog::Int("texture", texture),
 	    slogVector("position", placement.Position + Eigen::Vector2i{1, 1}),

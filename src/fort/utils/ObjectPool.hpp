@@ -3,7 +3,6 @@
 #include <concurrentqueue.h>
 #include <functional>
 #include <memory>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -22,24 +21,20 @@ public:
 	};
 };
 
-template <typename T> class DefaultDeleter {
-public:
-	constexpr DefaultDeleter() noexcept = default;
-
-	void operator()(T *t) const {
-		delete t;
-	};
-};
-
 template <
     typename T,
     typename Constructor = DefaultConstructor<T>,
-    typename Deleter     = DefaultDeleter<T>>
+    typename Deleter     = std::default_delete<T>>
 class ObjectPool
     : public std::enable_shared_from_this<ObjectPool<T, Constructor, Deleter>> {
 public:
 	using Ptr       = std::shared_ptr<ObjectPool<T, Constructor, Deleter>>;
 	using ObjectPtr = std::unique_ptr<T, std::function<void(T *)>>;
+
+	ObjectPool(const ObjectPool &other)            = delete;
+	ObjectPool(ObjectPool &&other)                 = delete;
+	ObjectPool &operator=(const ObjectPool &other) = delete;
+	ObjectPool &operator=(ObjectPool &&other)      = delete;
 
 	virtual ~ObjectPool() {
 		T *obj;
@@ -48,11 +43,6 @@ public:
 		}
 	}
 
-	ObjectPool(const ObjectPool &other) = delete;
-	ObjectPool(ObjectPool &&other)      = delete;
-	ObjectPool &operator=(const ObjectPool &other) = delete;
-	ObjectPool &operator=(ObjectPool &&other)      = delete;
-
 	inline static Ptr Create(
 	    const Constructor &constructor = Constructor{},
 	    const Deleter     &deleter     = Deleter{}
@@ -60,26 +50,14 @@ public:
 		return Ptr{new ObjectPool(constructor, deleter)};
 	}
 
-	template <typename... Args> inline ObjectPtr Get(Args &&...args) {
-		T *res;
-
-		if (d_queue.try_dequeue(res) == false) {
-			res = d_constructor(std::forward<Args>(args)...);
-		}
-
-		return {
-		    res,
-		    [self = this->shared_from_this()](T *t) {
-			    self->d_queue.enqueue(t);
-		    },
-		};
-	}
-
 	template <typename... OnRelease>
-	inline ObjectPtr GetWithRelease(OnRelease &&...onRelease) {
-		T *res;
+	inline ObjectPtr Get(OnRelease &&...onRelease) {
+
+		T *res{nullptr};
+
 		if (d_queue.try_dequeue(res) == false) {
 			res = d_constructor();
+			++d_created;
 		}
 		return {
 		    res,
@@ -91,24 +69,33 @@ public:
 	}
 
 	template <typename... Args> void Reserve(size_t n, Args &&...args) {
-		std::vector<ObjectPtr> reserved{n, nullptr};
-		for (auto &obj : reserved) {
-			obj = Get(std::forward<Args>(args)...);
+		std::vector<ObjectPtr> reserved{};
+		for (size_t i = 0; i < n; ++i) {
+			reserved.emplace_back(Get(std::forward<Args>(args)...));
 		}
 	}
 
-	protected:
-		ObjectPool(const Constructor &constructor, const Deleter &deleter)
-		    : d_constructor{constructor}
-		    , d_deleter(deleter) {}
-
-	private:
-		using Queue = moodycamel::ConcurrentQueue<T *>;
-
-		Constructor d_constructor;
-		Deleter     d_deleter;
-		Queue       d_queue;
+	struct Stats {
+		size_t Allocated, Available;
 	};
+
+	Stats GetStats() const {
+		return {.Allocated = d_created, .Available = d_queue.size_approx()};
+	}
+
+protected:
+	ObjectPool(const Constructor &constructor, const Deleter &deleter)
+	    : d_constructor{constructor}
+	    , d_deleter(deleter) {}
+
+private:
+	using Queue = moodycamel::ConcurrentQueue<T *>;
+
+	Constructor d_constructor;
+	Deleter     d_deleter;
+	Queue       d_queue;
+	size_t      d_created = 0;
+};
 
 } // namespace utils
 }; // namespace fort
