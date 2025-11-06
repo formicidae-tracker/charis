@@ -44,7 +44,7 @@ if(FORT_CHARIS_BUILD_GL)
 	FetchContent_Declare(
 		slogpp
 		GIT_REPOSITORY https://github.com/atuleu/slogpp.git
-		GIT_TAG 4d2c5d05ad3918b64a2ee3832dbd96ca55b171fa
+		GIT_TAG 26ca0aa97b726fcaa4a4e4b0bfa312a0267a387b
 	)
 
 	FetchContent_MakeAvailable(slogpp)
